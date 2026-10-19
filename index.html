@@ -239,12 +239,17 @@
     <div id="edit-report-modal" class="hidden fixed inset-0 bg-black/60 backdrop-blur-xs z-[80] flex justify-center items-center p-3 md:p-6 overflow-y-auto">
        <div class="bg-white rounded-xl shadow-2xl w-full max-w-4xl max-h-[90vh] flex flex-col border border-gray-200 overflow-hidden">
           <!-- Modal Header -->
-          <div class="bg-indigo-900 text-white p-4 flex justify-between items-center">
+          <div class="bg-indigo-900 text-white p-4 flex justify-between items-center gap-3">
              <div>
                 <h3 id="edit-modal-title" class="text-lg font-bold">تعديل تقرير المؤشر</h3>
                 <p id="edit-modal-subtitle" class="text-xs text-indigo-200 mt-0.5"></p>
              </div>
-             <button onclick="closeEditReportModal()" class="text-white hover:text-red-300 text-2xl font-bold p-1 leading-none">&times;</button>
+             <div class="flex items-center gap-2">
+                <button type="button" onclick="openMultiplyFromCurrentEdit()" class="bg-purple-600 hover:bg-purple-700 text-white text-xs font-bold px-3 py-1.5 rounded-lg shadow-xs transition flex items-center gap-1.5 border border-purple-400/40" title="مضاعفة جلسات هذا المؤشر في نفس الشهر">
+                   <i class="fas fa-layer-group text-[11px]"></i> مضاعفة الجلسات
+                </button>
+                <button onclick="closeEditReportModal()" class="text-white hover:text-red-300 text-2xl font-bold p-1 leading-none">&times;</button>
+             </div>
           </div>
 
           <!-- Modal Live Stats Bar -->
@@ -394,7 +399,177 @@
        </div>
     </div>
 
-    <!-- Rename Indicator Modal (تعديل اسم المؤشر في الإعدادات) -->
+    <!-- Multiply Sessions Modal (مضاعفة عدد الجلسات المحفوظة للمؤشر في نفس الشهر) -->
+    <div id="multiply-sessions-modal" class="hidden fixed inset-0 bg-black/60 backdrop-blur-xs z-[85] flex justify-center items-center p-3 md:p-6 overflow-y-auto">
+       <div class="bg-white rounded-2xl shadow-2xl w-full max-w-2xl border border-purple-200 overflow-hidden flex flex-col my-auto">
+          <!-- Header -->
+          <div class="bg-gradient-to-r from-purple-900 via-indigo-900 to-purple-800 text-white p-4.5 flex justify-between items-center shadow-md">
+             <div class="flex items-center gap-3">
+                <span class="w-10 h-10 rounded-xl bg-purple-700/80 border border-purple-400/30 flex items-center justify-center text-lg shadow-inner">
+                   <i class="fas fa-layer-group text-purple-200"></i>
+                </span>
+                <div>
+                   <h3 class="text-base sm:text-lg font-black tracking-tight flex items-center gap-2">
+                      <span>مضاعفة الجلسات المحفوظة للمؤشر</span>
+                      <span class="bg-purple-600/70 text-purple-100 text-[10px] font-bold px-2 py-0.5 rounded-full border border-purple-400/40">في نفس الشهر</span>
+                   </h3>
+                   <p class="text-xs text-purple-200 mt-0.5 flex items-center gap-2 flex-wrap">
+                      <span>المؤشر: <strong id="mult-modal-indicator-text" class="text-white"></strong></span>
+                      <span class="opacity-60">•</span>
+                      <span>الشهر: <strong id="mult-modal-month-text" class="text-purple-100 font-mono"></strong></span>
+                   </p>
+                </div>
+             </div>
+             <button onclick="closeMultiplySessionsModal()" class="text-purple-200 hover:text-white hover:bg-purple-800/50 rounded-lg p-2 text-xl font-bold transition leading-none" title="إغلاق">&times;</button>
+          </div>
+
+          <div class="p-5 space-y-5 overflow-y-auto max-h-[80vh]">
+             <!-- Current Sessions Info Card -->
+             <div class="bg-gradient-to-br from-purple-50 via-slate-50 to-indigo-50 border border-purple-200/80 rounded-xl p-4 shadow-2xs">
+                <div class="flex items-center justify-between mb-3 border-b border-purple-100 pb-2">
+                   <span class="text-xs font-bold text-purple-900 flex items-center gap-1.5">
+                      <i class="fas fa-info-circle text-purple-600"></i> الوضع الحالي للجلسات المسجلة:
+                   </span>
+                   <span id="mult-current-score-badge" class="px-2.5 py-0.5 rounded-full text-xs font-black bg-emerald-100 text-emerald-800 border border-emerald-200">الالتزام: 0%</span>
+                </div>
+                <div class="grid grid-cols-2 sm:grid-cols-3 gap-3 text-center">
+                   <div class="bg-white p-2.5 rounded-lg border border-purple-100 shadow-2xs">
+                      <div class="text-[11px] text-gray-500 font-medium">الجلسات المحفوظة حالياً</div>
+                      <div id="mult-current-sessions-num" class="text-xl font-black text-purple-900 mt-0.5">0</div>
+                      <div id="mult-current-sessions-range" class="text-[10px] text-purple-600 font-semibold mt-0.5">-</div>
+                   </div>
+                   <div class="bg-white p-2.5 rounded-lg border border-purple-100 shadow-2xs">
+                      <div class="text-[11px] text-gray-500 font-medium">إجمالي بنود التقييم الحالية</div>
+                      <div id="mult-current-records-num" class="text-xl font-black text-indigo-900 mt-0.5">0</div>
+                      <div class="text-[10px] text-gray-400 mt-0.5">سجل / بند تقييم</div>
+                   </div>
+                   <div class="col-span-2 sm:col-span-1 bg-white p-2.5 rounded-lg border border-purple-100 shadow-2xs">
+                      <div class="text-[11px] text-gray-500 font-medium">متوسط البنود للجلسة</div>
+                      <div id="mult-avg-records-per-session" class="text-xl font-black text-slate-800 mt-0.5">0</div>
+                      <div class="text-[10px] text-gray-400 mt-0.5">سؤال لكل جلسة</div>
+                   </div>
+                </div>
+             </div>
+
+             <!-- Multiplier Chooser -->
+             <div>
+                <label class="block text-xs font-bold text-gray-800 mb-2">
+                   اختر مقدار مضاعفة الجلسات المطلوب:
+                </label>
+                <div class="grid grid-cols-2 sm:grid-cols-4 gap-2.5">
+                   <button type="button" onclick="setMultiplyFactor(2)" id="btn-factor-2" class="mult-factor-btn p-3 rounded-xl border-2 border-purple-600 bg-purple-50 text-purple-950 font-bold text-center transition flex flex-col items-center justify-center gap-1 shadow-2xs">
+                      <span class="text-lg font-black text-purple-700">× 2</span>
+                      <span class="text-xs">الضعف</span>
+                      <span class="text-[10px] font-normal text-purple-600">إضافة 1× نفس الجلسات</span>
+                   </button>
+                   <button type="button" onclick="setMultiplyFactor(3)" id="btn-factor-3" class="mult-factor-btn p-3 rounded-xl border border-gray-200 bg-white hover:bg-purple-50/50 text-gray-700 font-bold text-center transition flex flex-col items-center justify-center gap-1 shadow-2xs">
+                      <span class="text-lg font-black text-indigo-600">× 3</span>
+                      <span class="text-xs">3 أضعاف</span>
+                      <span class="text-[10px] font-normal text-gray-500">إضافة 2× نفس الجلسات</span>
+                   </button>
+                   <button type="button" onclick="setMultiplyFactor(4)" id="btn-factor-4" class="mult-factor-btn p-3 rounded-xl border border-gray-200 bg-white hover:bg-purple-50/50 text-gray-700 font-bold text-center transition flex flex-col items-center justify-center gap-1 shadow-2xs">
+                      <span class="text-lg font-black text-indigo-600">× 4</span>
+                      <span class="text-xs">4 أضعاف</span>
+                      <span class="text-[10px] font-normal text-gray-500">إضافة 3× نفس الجلسات</span>
+                   </button>
+                   <button type="button" onclick="setMultiplyFactor(5)" id="btn-factor-5" class="mult-factor-btn p-3 rounded-xl border border-gray-200 bg-white hover:bg-purple-50/50 text-gray-700 font-bold text-center transition flex flex-col items-center justify-center gap-1 shadow-2xs">
+                      <span class="text-lg font-black text-indigo-600">× 5</span>
+                      <span class="text-xs">5 أضعاف</span>
+                      <span class="text-[10px] font-normal text-gray-500">إضافة 4× نفس الجلسات</span>
+                   </button>
+                </div>
+
+                <div class="mt-3 flex items-center gap-3 bg-gray-50 p-2.5 rounded-lg border border-gray-200">
+                   <span class="text-xs font-bold text-gray-700 whitespace-nowrap">أو حدد مضاعفاً مخصصاً:</span>
+                   <div class="flex items-center gap-1.5 flex-1 max-w-[160px]">
+                       <span class="text-sm font-black text-purple-700">×</span>
+                       <input type="number" id="mult-custom-factor-input" min="2" max="25" value="2" class="input py-1 px-2.5 text-center font-bold text-sm text-purple-950 border-purple-300 w-full" oninput="onCustomFactorChange(this.value)">
+                    </div>
+                    <span class="text-[11px] text-gray-500">(بين 2 إلى 25 ضعف)</span>
+                 </div>
+              </div>
+
+              <!-- Live Output Calculation Result Card -->
+              <div class="bg-gradient-to-r from-purple-900 via-indigo-900 to-purple-950 text-white p-4 rounded-xl shadow-md border border-purple-700">
+                 <div class="flex items-center gap-2 mb-2 text-xs font-bold text-purple-200">
+                    <i class="fas fa-calculator text-purple-300"></i>
+                    <span>نتيجة المضاعفة المباشرة في نفس الشهر:</span>
+                 </div>
+                 <div class="grid grid-cols-1 sm:grid-cols-3 gap-3 pt-1">
+                    <div class="bg-white/10 p-2 rounded-lg border border-white/15">
+                       <div class="text-[10px] text-purple-200">جلسات جديدة ستُضاف</div>
+                       <div id="mult-preview-added-sessions" class="text-xl font-black text-amber-300 mt-0.5">+0</div>
+                       <div id="mult-preview-added-range" class="text-[10px] text-purple-200 font-mono mt-0.5">-</div>
+                    </div>
+                    <div class="bg-white/10 p-2 rounded-lg border border-white/15">
+                       <div class="text-[10px] text-purple-200">إجمالي الجلسات النهائي</div>
+                       <div id="mult-preview-total-sessions" class="text-xl font-black text-emerald-300 mt-0.5">0</div>
+                       <div class="text-[10px] text-emerald-200 mt-0.5">جلسة مسجلة بالشهر</div>
+                    </div>
+                    <div class="bg-white/10 p-2 rounded-lg border border-white/15">
+                       <div class="text-[10px] text-purple-200">إجمالي التقييمات النهائي</div>
+                       <div id="mult-preview-total-records" class="text-xl font-black text-white mt-0.5">0</div>
+                       <div class="text-[10px] text-purple-200 mt-0.5">تقييم معتمد</div>
+                    </div>
+                 </div>
+              </div>
+
+              <!-- Options & Preferences -->
+              <div class="space-y-3 pt-1">
+                 <div class="text-xs font-bold text-gray-800 flex items-center gap-1.5">
+                    <i class="fas fa-sliders-h text-purple-600"></i>
+                    <span>خيارات التخصيص للجلسات الجديدة:</span>
+                 </div>
+
+                 <!-- Date options -->
+                 <div class="bg-gray-50 p-3 rounded-lg border border-gray-200 text-xs space-y-2">
+                    <div class="font-bold text-gray-700 mb-1">تاريخ الجلسات الجديدة المضاعفة:</div>
+                    <div class="space-y-1.5">
+                       <label class="flex items-center gap-2 cursor-pointer font-medium text-gray-800">
+                          <input type="radio" name="mult-date-mode" value="original" checked class="accent-purple-600" onchange="toggleMultCustomDate(false)">
+                          <span>الاحتفاظ بنفس تواريخ الجلسات الأصلية (موصى به لانتظام الجدول)</span>
+                       </label>
+                       <label class="flex items-center gap-2 cursor-pointer font-medium text-gray-800">
+                          <input type="radio" name="mult-date-mode" value="today" class="accent-purple-600" onchange="toggleMultCustomDate(false)">
+                          <span>تسجيل الجلسات الجديدة بتاريخ اليوم</span>
+                       </label>
+                       <div class="flex items-center gap-2 flex-wrap">
+                          <label class="flex items-center gap-2 cursor-pointer font-medium text-gray-800">
+                             <input type="radio" name="mult-date-mode" value="custom" class="accent-purple-600" onchange="toggleMultCustomDate(true)">
+                             <span>تحديد تاريخ محدد للجلسات الجديدة:</span>
+                          </label>
+                          <input type="date" id="mult-custom-date" disabled class="input py-1 px-2 text-xs w-auto max-w-[170px] bg-white border-gray-300">
+                       </div>
+                    </div>
+                 </div>
+
+                 <!-- Variation option -->
+                 <div class="bg-gray-50 p-3 rounded-lg border border-gray-200 text-xs">
+                    <label class="flex items-start gap-2.5 cursor-pointer">
+                       <input type="checkbox" id="mult-slight-variation" class="accent-purple-600 w-4 h-4 mt-0.5 rounded cursor-pointer">
+                       <div>
+                          <span class="font-bold text-gray-800">إضافة تنوع واقعي بسيط جداً (±3%) في بعض إجابات الجلسات الجديدة</span>
+                          <p class="text-[11px] text-gray-500 mt-0.5">عند عدم التحديد، يتم نسخ التقييمات بنسبة تطابق 100% مع الجلسات الأصلية بالضبط.</p>
+                       </div>
+                    </label>
+                 </div>
+              </div>
+           </div>
+
+           <!-- Footer Actions -->
+           <div class="p-4 bg-slate-50 border-t border-gray-200 flex flex-wrap justify-between items-center gap-3">
+              <button type="button" onclick="closeMultiplySessionsModal()" class="bg-gray-200 hover:bg-gray-300 text-gray-700 px-5 py-2.5 rounded-xl font-bold text-sm transition">
+                 إلغاء
+              </button>
+              <button type="button" onclick="confirmMultiplySessions()" class="bg-gradient-to-r from-purple-700 to-indigo-700 hover:from-purple-800 hover:to-indigo-800 text-white font-black px-6 py-2.5 rounded-xl text-sm shadow-md transition flex items-center gap-2">
+                 <i class="fas fa-layer-group"></i>
+                 <span id="mult-btn-confirm-text">تأكيد مضاعفة الجلسات الآن</span>
+              </button>
+           </div>
+        </div>
+     </div>
+
+     <!-- Rename Indicator Modal (تعديل اسم المؤشر في الإعدادات) -->
     <div id="rename-indicator-modal" class="hidden fixed inset-0 bg-black/60 backdrop-blur-xs z-[85] flex justify-center items-center p-4">
        <div class="bg-white rounded-xl shadow-2xl w-full max-w-lg p-6 border border-gray-200">
           <div class="flex justify-between items-center border-b pb-3 mb-4">
@@ -634,9 +809,14 @@
                  <span><i class="fas fa-bookmark text-indigo-600 ml-1"></i> رقم الجلسة الحالية:</span>
                  <span id="session-display" class="text-base font-black text-indigo-800 bg-white px-3 py-0.5 rounded border border-indigo-200 shadow-xs">-</span>
                </div>
-               <div class="flex justify-between items-center text-xs text-gray-600 mt-1.5 border-t border-indigo-100 pt-1.5">
-                 <span>عدد الجلسات المحفوظة هذا الشهر:</span>
-                 <span id="session-count-text" class="font-bold text-gray-800">0</span>
+               <div class="flex justify-between items-center text-xs text-gray-600 mt-1.5 border-t border-indigo-100 pt-1.5 flex-wrap gap-2">
+                 <div class="flex items-center gap-1.5">
+                   <span>عدد الجلسات المحفوظة هذا الشهر:</span>
+                   <span id="session-count-text" class="font-bold text-gray-800">0</span>
+                 </div>
+                 <button type="button" id="btn-multiply-from-entry" onclick="openMultiplyFromEntry()" class="hidden bg-purple-600 hover:bg-purple-700 text-white text-[11px] font-bold px-2.5 py-1 rounded shadow-xs transition flex items-center gap-1 cursor-pointer" title="مضاعفة عدد الجلسات المحفوظة لهذا المؤشر في نفس الشهر">
+                   <i class="fas fa-layer-group text-[10px]"></i> مضاعفة الجلسات (×2 أو أكثر)
+                 </button>
                </div>
             </div>
          </div>
@@ -789,6 +969,9 @@
                 </label>
              </div>
              <div class="flex items-center gap-2 flex-wrap">
+                <button type="button" onclick="openMultiplyFromPreview()" class="bg-purple-600 hover:bg-purple-700 text-white px-3.5 py-1.5 rounded-md font-bold text-xs shadow transition flex items-center gap-1.5" title="مضاعفة جلسات هذا المؤشر في نفس الشهر">
+                   <i class="fas fa-layer-group text-[11px]"></i> مضاعفة الجلسات
+                </button>
                 <button onclick="exportCurrentPreviewToExcel()" class="bg-emerald-600 hover:bg-emerald-700 text-white px-3.5 py-1.5 rounded-md font-bold text-xs shadow transition flex items-center gap-1.5" title="حفظ هذا التقرير في شيت إكسيل">
                    <i class="fas fa-file-excel"></i> حفظ في شيت إكسيل
                 </button>
@@ -1273,6 +1456,8 @@
        hide('limit-msg');
        el('session-display').innerText = '-';
        if(el('session-count-text')) el('session-count-text').innerText = '0';
+       const btnMult = el('btn-multiply-from-entry');
+       if (btnMult) btnMult.classList.add('hidden');
     }
 
     function checkSession() {
@@ -1282,6 +1467,8 @@
        if(!date || !ind) {
           el('session-display').innerText = '-';
           if(el('session-count-text')) el('session-count-text').innerText = '0';
+          const btnMult = el('btn-multiply-from-entry');
+          if (btnMult) btnMult.classList.add('hidden');
           return;
        }
        
@@ -1296,6 +1483,14 @@
           el('session-display').innerText = `الجلسة رقم ${nextSessionNum}`;
           if(el('session-count-text')) {
              el('session-count-text').innerText = `${res.currentCount || 0} جلسة/جلسات`;
+          }
+          const btnMult = el('btn-multiply-from-entry');
+          if (btnMult) {
+             if (res.currentCount && res.currentCount > 0) {
+                btnMult.classList.remove('hidden');
+             } else {
+                btnMult.classList.add('hidden');
+             }
           }
           
           hide('limit-msg');
@@ -1540,13 +1735,21 @@
        if(!valid) { alert('يرجى الإجابة على جميع الأسئلة'); return; }
 
        loading(true);
-       google.script.run.withSuccessHandler(() => {
+       google.script.run.withSuccessHandler((res) => {
           loading(false);
-          alert('تم الحفظ بنجاح');
+          const savedInd = indicator;
+          const savedMonth = (date || '').slice(0, 7);
+          const sessNum = (res && res.session) ? res.session : (currentSession ? currentSession.nextSession : '');
+          
           initEntry();
           // Reset selections partially
           el('department').value = ''; el('category').value = ''; el('indicator').value = ''; 
           updateEntryDropdowns();
+
+          const promptMult = confirm(`تم حفظ التقييم للجلسة ${sessNum ? '(' + sessNum + ') ' : ''}بنجاح!\n\nهل ترغب في مضاعفة عدد الجلسات المحفوظة لهذا المؤشر (${savedInd}) في نفس الشهر (${savedMonth}) الآن؟`);
+          if (promptMult) {
+             openMultiplySessionsModal(savedMonth, savedInd);
+          }
        }).withFailureHandler(err => {
           loading(false); alert('خطأ: ' + err);
        }).submitKpiForm(data);
@@ -1637,7 +1840,12 @@
                 <span class="block text-[10px] text-gray-400 mt-0.5">${r.totalYes || 0} من ${r.totalValid || 0}</span>
              </td>
              <td class="p-3 border-l text-center text-xs text-gray-600">
-                <span class="bg-gray-100 text-gray-700 px-2 py-0.5 rounded text-[11px] font-semibold">${r.sessionsCount || 1} جلسات</span>
+                <div class="flex flex-col items-center gap-1">
+                   <span class="bg-gray-100 text-gray-700 px-2 py-0.5 rounded text-[11px] font-semibold">${r.sessionsCount || 1} جلسات</span>
+                   <button type="button" onclick="openMultiplySessionsModal('${escMonth}', '${escInd}')" class="text-[10px] text-purple-700 hover:text-purple-900 bg-purple-50 hover:bg-purple-100 border border-purple-200 px-1.5 py-0.5 rounded font-bold transition flex items-center gap-0.5 shadow-2xs" title="مضاعفة جلسات هذا المؤشر في نفس الشهر">
+                      <i class="fas fa-layer-group text-[9px]"></i> مضاعفة
+                   </button>
+                </div>
              </td>
              <td class="p-3 text-center">
                 <div class="flex items-center justify-center gap-1.5 flex-wrap">
@@ -1649,6 +1857,9 @@
                    </button>
                    <button type="button" onclick="openEditReportModal('${escMonth}', '${escInd}')" class="bg-amber-50 hover:bg-amber-100 text-amber-800 border border-amber-200 px-2.5 py-1 rounded text-xs font-semibold flex items-center gap-1 transition" title="تعديل تقييمات وجلسات هذا المؤشر">
                       <i class="fas fa-edit text-[11px]"></i> تعديل
+                   </button>
+                   <button type="button" onclick="openMultiplySessionsModal('${escMonth}', '${escInd}')" class="bg-purple-50 hover:bg-purple-100 text-purple-800 border border-purple-200 px-2.5 py-1 rounded text-xs font-semibold flex items-center gap-1 transition" title="مضاعفة عدد الجلسات المحفوظة لهذا المؤشر في نفس الشهر">
+                      <i class="fas fa-layer-group text-[11px] text-purple-600"></i> مضاعفة
                    </button>
                    <button type="button" onclick="openDuplicateReportModal('${escMonth}', '${escInd}')" class="bg-teal-50 hover:bg-teal-100 text-teal-800 border border-teal-200 px-2.5 py-1 rounded text-xs font-semibold flex items-center gap-1 transition" title="نسخ هذا المؤشر والتعديل على الشهر والإحصائية">
                       <i class="fas fa-copy text-[11px]"></i> نسخ
@@ -1745,8 +1956,13 @@
        });
     }
 
+    let currentViewingMonth = '';
+    let currentViewingIndicator = '';
+
     // 1. View Single Report
     function viewSingleReport(month, indicator) {
+       currentViewingMonth = month;
+       currentViewingIndicator = indicator;
        loading(true);
        google.script.run.withSuccessHandler(data => {
           loading(false);
@@ -2702,6 +2918,254 @@
           loading(false);
           alert('خطأ أثناء حفظ التقرير المنسوخ: ' + err);
        }).cloneKpiReport(targetMonth, targetDate, targetIndicator, payload);
+    }
+
+    // --- Multiply Saved Sessions in Same Month Logic ---
+    let currentMultiplyRecords = [];
+    let currentMultiplyMonth = '';
+    let currentMultiplyIndicator = '';
+    let currentMultiplyFactor = 2;
+    let currentMultiplyUniqueSessions = [];
+
+    function openMultiplySessionsModal(month, indicator) {
+       currentMultiplyMonth = month;
+       currentMultiplyIndicator = indicator;
+       currentMultiplyFactor = 2;
+
+       loading(true);
+       google.script.run.withSuccessHandler(data => {
+          loading(false);
+          currentMultiplyRecords = (data || []).map(r => ({ ...r }));
+          if (currentMultiplyRecords.length === 0) {
+             alert('لا توجد سجلات أو جلسات محفوظة لهذا المؤشر في شهر ' + month);
+             return;
+          }
+
+          // Gather unique session numbers
+          const sessSet = new Set();
+          currentMultiplyRecords.forEach(r => {
+             const s = Number(r.sessionNumber !== undefined ? r.sessionNumber : r.Session_Number) || 1;
+             sessSet.add(s);
+          });
+          currentMultiplyUniqueSessions = Array.from(sessSet).sort((a, b) => a - b);
+
+          renderMultiplySessionsModal();
+          show('multiply-sessions-modal');
+       }).withFailureHandler(err => {
+          loading(false);
+          alert('خطأ أثناء تحميل بيانات المؤشر للمضاعفة: ' + err);
+       }).fetchIndicatorRecordsForEdit(month, indicator);
+    }
+
+    function renderMultiplySessionsModal() {
+       el('mult-modal-indicator-text').innerText = currentMultiplyIndicator;
+       el('mult-modal-month-text').innerText = currentMultiplyMonth;
+
+       const sessCount = currentMultiplyUniqueSessions.length || 1;
+       const minSess = currentMultiplyUniqueSessions[0] || 1;
+       const maxSess = currentMultiplyUniqueSessions[sessCount - 1] || sessCount;
+
+       el('mult-current-sessions-num').innerText = `${sessCount}`;
+       el('mult-current-sessions-range').innerText = sessCount > 1 ? `الجلسات رقم ${minSess} إلى ${maxSess}` : `الجلسة رقم ${minSess}`;
+       el('mult-current-records-num').innerText = `${currentMultiplyRecords.length}`;
+       el('mult-avg-records-per-session').innerText = `${Math.round(currentMultiplyRecords.length / sessCount)}`;
+
+       // Calculate compliance
+       let yes = 0, valid = 0;
+       currentMultiplyRecords.forEach(r => {
+          if (r.answer === 'Yes') { yes++; valid++; }
+          else if (r.answer === 'No') { valid++; }
+       });
+       const pct = valid > 0 ? Math.round((yes / valid) * 100) : 0;
+       const badge = el('mult-current-score-badge');
+       if (badge) {
+          badge.innerText = `الالتزام الحالي: ${pct}%`;
+          badge.className = 'px-2.5 py-0.5 rounded-full text-xs font-black border ' + (pct >= 80 ? 'bg-emerald-100 text-emerald-800 border-emerald-200' : (pct >= 50 ? 'bg-amber-100 text-amber-800 border-amber-200' : 'bg-red-100 text-red-800 border-red-200'));
+       }
+
+       // Reset custom date input
+       const customDateEl = el('mult-custom-date');
+       if (customDateEl) {
+          customDateEl.value = `${currentMultiplyMonth}-01`;
+          customDateEl.disabled = true;
+       }
+       const originalDateRadio = document.querySelector('input[name="mult-date-mode"][value="original"]');
+       if (originalDateRadio) originalDateRadio.checked = true;
+
+       const variationCheckbox = el('mult-slight-variation');
+       if (variationCheckbox) variationCheckbox.checked = false;
+
+       setMultiplyFactor(2);
+    }
+
+    function setMultiplyFactor(factor) {
+       currentMultiplyFactor = parseInt(factor, 10) || 2;
+       const customInput = el('mult-custom-factor-input');
+       if (customInput) customInput.value = currentMultiplyFactor;
+
+       // Update button styling
+       [2, 3, 4, 5].forEach(f => {
+          const btn = el(`btn-factor-${f}`);
+          if (btn) {
+             if (f === currentMultiplyFactor) {
+                btn.className = 'mult-factor-btn p-3 rounded-xl border-2 border-purple-600 bg-purple-50 text-purple-950 font-bold text-center transition flex flex-col items-center justify-center gap-1 shadow-xs';
+             } else {
+                btn.className = 'mult-factor-btn p-3 rounded-xl border border-gray-200 bg-white hover:bg-purple-50/50 text-gray-700 font-bold text-center transition flex flex-col items-center justify-center gap-1 shadow-2xs';
+             }
+          }
+       });
+
+       updateMultiplyCalculation();
+    }
+
+    function onCustomFactorChange(val) {
+       const factor = parseInt(val, 10);
+       if (factor && factor >= 2) {
+          currentMultiplyFactor = factor;
+          [2, 3, 4, 5].forEach(f => {
+             const btn = el(`btn-factor-${f}`);
+             if (btn) {
+                if (f === currentMultiplyFactor) {
+                   btn.className = 'mult-factor-btn p-3 rounded-xl border-2 border-purple-600 bg-purple-50 text-purple-950 font-bold text-center transition flex flex-col items-center justify-center gap-1 shadow-xs';
+                } else {
+                   btn.className = 'mult-factor-btn p-3 rounded-xl border border-gray-200 bg-white hover:bg-purple-50/50 text-gray-700 font-bold text-center transition flex flex-col items-center justify-center gap-1 shadow-2xs';
+                }
+             }
+          });
+          updateMultiplyCalculation();
+       }
+    }
+
+    function updateMultiplyCalculation() {
+       const curSessions = currentMultiplyUniqueSessions.length || 1;
+       const curRecords = currentMultiplyRecords.length || 0;
+       const factor = currentMultiplyFactor || 2;
+
+       const addedSessions = (factor - 1) * curSessions;
+       const totalSessions = factor * curSessions;
+       const maxCurrent = currentMultiplyUniqueSessions.length > 0 
+          ? Math.max(...currentMultiplyUniqueSessions) 
+          : curSessions;
+
+       const newRangeStart = maxCurrent + 1;
+       const newRangeEnd = maxCurrent + addedSessions;
+
+       if (el('mult-preview-added-sessions')) {
+          el('mult-preview-added-sessions').innerText = `+${addedSessions}`;
+       }
+       if (el('mult-preview-added-range')) {
+          el('mult-preview-added-range').innerText = addedSessions > 1 ? `الجلسات من ${newRangeStart} إلى ${newRangeEnd}` : `الجلسة رقم ${newRangeStart}`;
+       }
+       if (el('mult-preview-total-sessions')) {
+          el('mult-preview-total-sessions').innerText = `${totalSessions}`;
+       }
+       if (el('mult-preview-total-records')) {
+          el('mult-preview-total-records').innerText = `${curRecords * factor}`;
+       }
+       if (el('mult-btn-confirm-text')) {
+          el('mult-btn-confirm-text').innerText = `تأكيد مضاعفة الجلسات الآن (إضافة ${addedSessions} جلسة)`;
+       }
+    }
+
+    function toggleMultCustomDate(isCustom) {
+       const customDateInput = el('mult-custom-date');
+       if (customDateInput) {
+          customDateInput.disabled = !isCustom;
+          if (isCustom && !customDateInput.value) {
+             customDateInput.value = `${currentMultiplyMonth}-01`;
+          }
+       }
+    }
+
+    function closeMultiplySessionsModal() {
+       hide('multiply-sessions-modal');
+       currentMultiplyRecords = [];
+       currentMultiplyUniqueSessions = [];
+    }
+
+    function confirmMultiplySessions() {
+       if (!currentMultiplyMonth || !currentMultiplyIndicator) return;
+
+       const factor = currentMultiplyFactor || 2;
+       if (factor < 2) {
+          alert('يرجى اختيار مضاعف 2 أو أكثر');
+          return;
+       }
+
+       const dateMode = document.querySelector('input[name="mult-date-mode"]:checked')?.value || 'original';
+       const customDate = el('mult-custom-date')?.value || '';
+       const slightVariation = el('mult-slight-variation')?.checked || false;
+
+       const curSessions = currentMultiplyUniqueSessions.length || 1;
+       const addedSessions = (factor - 1) * curSessions;
+       const totalSessions = factor * curSessions;
+
+       const msg = `تأكيد مضاعفة جلسات المؤشر:\n\n` +
+          `• المؤشر: ${currentMultiplyIndicator}\n` +
+          `• الشهر: ${currentMultiplyMonth}\n` +
+          `• الجلسات الحالية: ${curSessions} جلسات\n` +
+          `• مقدار المضاعفة: ${factor} أضعاف\n` +
+          `• سيتم إضافة: ${addedSessions} جلسة جديدة مرقمة تسلسلياً\n` +
+          `• إجمالي الجلسات بعد الإجراء: ${totalSessions} جلسات في نفس الشهر.\n\n` +
+          `هل تريد المتابعة وحفظ الجلسات الجديدة؟`;
+
+       if (!confirm(msg)) return;
+
+       loading(true);
+       google.script.run.withSuccessHandler(res => {
+          loading(false);
+          closeMultiplySessionsModal();
+
+          const addedCount = res?.addedSessionsCount !== undefined ? res.addedSessionsCount : addedSessions;
+          const totalCount = res?.totalSessionsCount !== undefined ? res.totalSessionsCount : totalSessions;
+          const addedRecs = res?.addedRecordsCount || '';
+
+          alert(`تمت مضاعفة الجلسات بنجاح!\nتمت إضافة ${addedCount} جلسة جديدة (${addedRecs} تقييم) لهذا المؤشر في نفس الشهر (${currentMultiplyMonth})، ليصبح إجمالي الجلسات المسجلة ${totalCount} جلسة.`);
+
+          // Refresh saved reports table
+          rawReportsList = [];
+          loadReportsList();
+
+          // If preview is currently open for this indicator and month, refresh it
+          const previewContent = el('rep-content');
+          if (previewContent && !previewContent.classList.contains('hidden') && currentViewingIndicator === currentMultiplyIndicator && currentViewingMonth === currentMultiplyMonth) {
+             viewSingleReport(currentMultiplyMonth, currentMultiplyIndicator);
+          }
+
+          // If entry screen is on this indicator, refresh its session count
+          if (el('indicator')?.value === currentMultiplyIndicator) {
+             checkSession();
+          }
+       }).withFailureHandler(err => {
+          loading(false);
+          alert('خطأ أثناء مضاعفة الجلسات: ' + err);
+       }).multiplyKpiSessions(currentMultiplyMonth, currentMultiplyIndicator, factor, {
+          dateMode: dateMode,
+          customDate: customDate,
+          slightVariation: slightVariation
+       });
+    }
+
+    // Quick helpers to open Multiply modal from Entry, Edit modal, or Preview
+    function openMultiplyFromEntry() {
+       const ind = el('indicator')?.value;
+       const dateVal = el('date')?.value;
+       if (!ind || !dateVal) {
+          alert('يرجى تحديد المؤشر وتاريخ التقييم أولاً');
+          return;
+       }
+       const monthStr = dateVal.slice(0, 7);
+       openMultiplySessionsModal(monthStr, ind);
+    }
+
+    function openMultiplyFromCurrentEdit() {
+       if (!currentEditingMonth || !currentEditingIndicator) return;
+       openMultiplySessionsModal(currentEditingMonth, currentEditingIndicator);
+    }
+
+    function openMultiplyFromPreview() {
+       if (!currentViewingMonth || !currentViewingIndicator) return;
+       openMultiplySessionsModal(currentViewingMonth, currentViewingIndicator);
     }
 
     // 6. Unified Report Rendering (Each report on an individual printable page)
@@ -3900,7 +4364,8 @@
            fetchAllResultsForExcel: () => ([]),
            deleteProcedureFromIndicator: () => ({ success: true, deletedFromReports: 0 }),
            addProcedureItemToReports: () => ({ success: true, addedToSessionsCount: 0 }),
-           deleteQuestionFromIndicator: () => ({ success: true, deletedFromReports: 0 })
+           deleteQuestionFromIndicator: () => ({ success: true, deletedFromReports: 0 }),
+           multiplyKpiSessions: (m, ind, mult) => ({ success: true, addedSessionsCount: 5, totalSessionsCount: 10, addedRecordsCount: 50, multiplier: mult, month: m, indicator: ind })
        };
 
        const createRunner = (success, failure) => new Proxy({}, {

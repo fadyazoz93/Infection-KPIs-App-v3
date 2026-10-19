@@ -893,6 +893,131 @@ export default async function handler(req: any, res: any) {
         break;
       }
 
+      case 'multiplyKpiSessions': {
+        const [monthStr, indicator, multiplierRaw, optionsRaw] = args;
+        const multiplier = Math.max(2, parseInt(multiplierRaw, 10) || 2);
+        const options = optionsRaw || {};
+
+        if (!monthStr || !indicator) {
+          result = { success: false, error: 'بيانات غير مكتملة لمضاعفة الجلسات' };
+          break;
+        }
+
+        const [y, m] = monthStr.split('-').map(Number);
+        const query = await db.execute({
+          sql: "SELECT * FROM kpis_data WHERE Month = ? AND Year = ? AND Indicator = ? ORDER BY Session_Number ASC, id ASC",
+          args: [m, y, indicator]
+        });
+
+        const rows = query.rows;
+        if (!rows || rows.length === 0) {
+          result = { success: false, error: 'لا توجد جلسات أو سجلات مسجلة لهذا المؤشر في هذا الشهر للمضاعفة' };
+          break;
+        }
+
+        // تجميع الجلسات الحالية لمعرفة أرقامها وهيكلها
+        const sessionsMap: Record<number, any[]> = {};
+        for (const r of rows) {
+          const sNum = Number(r.Session_Number !== undefined ? r.Session_Number : r.session_number) || 1;
+          if (!sessionsMap[sNum]) {
+            sessionsMap[sNum] = [];
+          }
+          sessionsMap[sNum].push(r);
+        }
+
+        const existingSessionNumbers = Object.keys(sessionsMap).map(Number).sort((a, b) => a - b);
+        const currentSessionsCount = existingSessionNumbers.length;
+        const maxExistingSession = existingSessionNumbers.length > 0 
+          ? Math.max(...existingSessionNumbers) 
+          : 0;
+
+        const timestamp = new Date().toISOString();
+        const procMap = await getQuestionToProcedureMap();
+        let addedRecordsCount = 0;
+        let addedSessionsCount = 0;
+
+        // مضاعفة الجلسات بمقدار multiplier
+        // إذا كان المضاعف 2 (الضعف)، نكرر الجلسات 1 مرة إضافية
+        // إذا كان المضاعف 3، نكرر الجلسات 2 مرة إضافية وهكذا
+        const cycles = multiplier - 1;
+
+        for (let cycle = 1; cycle <= cycles; cycle++) {
+          for (let i = 0; i < existingSessionNumbers.length; i++) {
+            const origSessionNum = existingSessionNumbers[i];
+            const recordsInSession = sessionsMap[origSessionNum] || [];
+            
+            // رقم الجلسة الجديدة متسلسل بعد أعلى رقم جلسة حالي
+            addedSessionsCount++;
+            const newSessionNumber = maxExistingSession + addedSessionsCount;
+
+            // تحديد التاريخ للجلسة الجديدة
+            let sessionDate: string;
+            if (options.dateMode === 'custom' && options.customDate) {
+              sessionDate = options.customDate;
+            } else if (options.dateMode === 'today') {
+              sessionDate = new Date().toISOString().slice(0, 10);
+            } else {
+              // الافتراضي: استخدام تاريخ الجلسة الأصلية
+              sessionDate = recordsInSession[0]?.Date || recordsInSession[0]?.date || `${y}-${("0" + m).slice(-2)}-01`;
+            }
+
+            for (const r of recordsInSession) {
+              const ind = String(r.Indicator || r.indicator || indicator).trim();
+              const q = String(r.Question || r.question || '').trim();
+              const proc = r.Procedure || r.procedure || procMap[`${ind}___${q}`] || 'عام';
+
+              let answer = String(r.Answer || r.answer || 'Yes');
+              let note = String(r.Note || r.note || '');
+
+              // تنوع طفيف اختياري إن طُلب
+              if (options.slightVariation && Math.random() < 0.05) {
+                if (answer === 'Yes') {
+                  answer = 'No';
+                  note = 'عدم التزام تم رصده في الجلسة الإضافية';
+                }
+              }
+
+              await db.execute({
+                sql: `INSERT INTO kpis_data (
+                  Date, Month, Year, Inspector, Department, Category, Session_Number,
+                  Indicator, Procedure, Question, Answer, Note, Timestamp, Target_Name, Target_Job_ID
+                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+                args: [
+                  sessionDate,
+                  m,
+                  y,
+                  r.Inspector || r.inspector || 'مسؤول التقييم',
+                  r.Department || r.department || '',
+                  r.Category || r.category || '',
+                  newSessionNumber,
+                  indicator,
+                  proc,
+                  q,
+                  answer,
+                  note,
+                  timestamp,
+                  r.Target_Name || r.target_name || '',
+                  r.Target_Job_ID || r.target_job_id || ''
+                ]
+              });
+              addedRecordsCount++;
+            }
+          }
+        }
+
+        const totalSessionsCount = currentSessionsCount + addedSessionsCount;
+        result = {
+          success: true,
+          addedSessionsCount,
+          totalSessionsCount,
+          addedRecordsCount,
+          multiplier,
+          month: monthStr,
+          indicator
+        };
+        break;
+      }
+
       case 'deleteProcedureFromIndicator': {
         const [indicatorRaw, procedureRaw] = args;
         const indicator = String(indicatorRaw || '').trim();
