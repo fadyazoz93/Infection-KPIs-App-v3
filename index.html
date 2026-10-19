@@ -1,0 +1,3840 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <title>نظام مؤشرات الأداء (KPIs)</title>
+  <link rel="icon" type="image/svg+xml" href="/favicon.svg">
+  <link rel="icon" type="image/png" sizes="192x192" href="/favicon.png">
+  <link rel="apple-touch-icon" href="/apple-touch-icon.png">
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+  <style>
+    @import url('https://fonts.googleapis.com/css2?family=Tajawal:wght@400;700&display=swap');
+    body { font-family: 'Tajawal', sans-serif; background-color: #f8fafc; }
+    
+    /* Print Tweaks */
+    @media print {
+      @page {
+        size: A4 portrait;
+        margin: 8mm 8mm 8mm 8mm; /* Compact margins to maximize A4 space */
+      }
+      
+      .no-print { display: none !important; }
+      
+      body { 
+        background-color: white !important; 
+        margin: 0 !important; 
+        padding: 0 !important;
+        -webkit-print-color-adjust: exact !important;
+        print-color-adjust: exact !important;
+      }
+      
+      #main-content { 
+        background-color: white !important; 
+        margin: 0 !important; 
+        padding: 0 !important;
+        width: 100% !important;
+        overflow: visible !important;
+      }
+      
+      #rep-content {
+        display: block !important;
+        width: 100% !important;
+        max-width: 100% !important;
+        margin: 0 !important;
+        padding: 0 !important;
+        box-shadow: none !important;
+        border: none !important;
+      }
+
+      .shadow-md, .shadow-lg, .shadow-sm, .shadow { box-shadow: none !important; }
+      
+      /* Multi-page report separation: each selected indicator report on a single separate page */
+      .report-print-page {
+        display: flex !important;
+        flex-direction: column !important;
+        width: 100% !important;
+        min-height: 250mm !important;
+        max-height: 275mm !important; /* Strictly fits within 1 A4 page */
+        page-break-before: auto !important;
+        page-break-after: always !important;
+        break-after: page !important;
+        page-break-inside: avoid !important;
+        break-inside: avoid !important;
+        box-sizing: border-box !important;
+        margin: 0 !important;
+        padding: 4mm 0 !important;
+        overflow: hidden !important;
+      }
+
+      .report-print-page:last-child {
+        page-break-after: auto !important;
+        break-after: auto !important;
+      }
+
+      .print-header {
+        page-break-inside: avoid !important;
+        break-inside: avoid !important;
+        margin-bottom: 6px !important;
+        padding-bottom: 6px !important;
+      }
+
+      /* Compact table typography for print */
+      .report-table {
+        width: 100% !important;
+        border-collapse: collapse !important;
+        font-size: 8.5pt !important;
+      }
+      .report-table th, .report-table td {
+        padding: 4px 6px !important;
+        font-size: 8.5pt !important;
+        line-height: 1.25 !important;
+        border: 1px solid #cbd5e1 !important;
+      }
+      .report-table thead th {
+        background-color: #f1f5f9 !important;
+        color: #0f172a !important;
+        font-weight: bold !important;
+      }
+
+      /* Typography adjustments for print */
+      h1 { font-size: 14pt !important; line-height: 1.2 !important; margin: 0 !important; }
+      h2 { font-size: 12pt !important; line-height: 1.2 !important; margin: 0 !important; }
+      p, td, th { font-size: 8.5pt !important; }
+
+      /* Hide application logo on print and PDF export */
+      .print-header img, img[alt*="شعار"], img[src*="favicon"], .app-logo-print {
+        display: none !important;
+      }
+
+      /* إلغاء ومنع ظهور سطر تاريخ التقرير وإجمالي بنود التقييم والمطابقات ومسؤول مكافحة العدوى نهائياً عند الطباعة */
+      .report-footer, .print-footer, .officer-signature, .report-signatures, 
+      .report-officer, [id*="signature"], [class*="signature"], [class*="report-officer"],
+      .print-officer-line, .print-totals-line, .eval-summary-footer, [data-print-hide] {
+        display: none !important;
+        visibility: hidden !important;
+        height: 0 !important;
+        margin: 0 !important;
+        padding: 0 !important;
+      }
+    }
+    
+    .loader {
+      border: 4px solid #f3f3f3; border-top: 4px solid #4f46e5; border-radius: 50%;
+      width: 40px; height: 40px; animation: spin 1s linear infinite;
+    }
+    @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
+  </style>
+<link rel="stylesheet" href="/index.css">
+</head>
+<body class="text-slate-800 h-screen flex flex-col overflow-hidden">
+
+  <!-- Header -->
+  <header class="bg-indigo-900 text-white shadow-md z-10 no-print flex-shrink-0">
+    <div class="container mx-auto px-4 h-16 flex justify-between items-center">
+      <div class="flex items-center gap-3">
+        <img src="/favicon.svg" alt="شعار النظام" class="w-10 h-10 rounded-xl shadow-md border border-white/10 bg-white/5 p-0.5 object-contain">
+        <div>
+          <h1 id="brand-name" class="font-bold text-lg leading-tight">وحدة مكافحة العدوى</h1>
+          <p class="text-xs text-indigo-200">نظام مؤشرات الأداء (KPIs)</p>
+        </div>
+      </div>
+      <nav class="hidden md:flex gap-6 text-sm font-bold items-center">
+        <button onclick="nav('home')" class="hover:text-indigo-300 transition">لوحة القيادة</button>
+        <button onclick="nav('entry')" class="nav-entry hidden hover:text-indigo-300 transition">إدخال تقييم</button>
+        <button onclick="nav('report')" class="hover:text-indigo-300 transition">التقارير</button>
+        <button onclick="nav('individuals')" class="hover:text-indigo-300 transition">التقييمات الفردية</button>
+        <button onclick="nav('settings')" class="nav-settings hidden hover:text-yellow-300 transition text-yellow-100">الإعدادات</button>
+        <button onclick="logout()" class="hover:text-red-300 transition text-red-200 mr-4"><i class="fas fa-sign-out-alt"></i> خروج</button>
+      </nav>
+      <button class="md:hidden text-2xl" onclick="document.getElementById('mobile-menu').classList.toggle('hidden')">
+        <i class="fas fa-bars"></i>
+      </button>
+    </div>
+    <!-- Mobile Menu -->
+    <div id="mobile-menu" class="hidden bg-indigo-800 text-white md:hidden">
+      <button onclick="nav('home')" class="block w-full text-right p-3 border-b border-indigo-700">لوحة القيادة</button>
+      <button onclick="nav('entry')" class="nav-entry hidden block w-full text-right p-3 border-b border-indigo-700">إدخال تقييم</button>
+      <button onclick="nav('report')" class="block w-full text-right p-3 border-b border-indigo-700">التقارير</button>
+      <button onclick="nav('individuals')" class="block w-full text-right p-3 border-b border-indigo-700">التقييمات الفردية</button>
+      <button onclick="nav('settings')" class="nav-settings hidden block w-full text-right p-3 border-b border-indigo-700 text-yellow-300">الإعدادات</button>
+      <button onclick="logout()" class="block w-full text-right p-3 text-red-300"><i class="fas fa-sign-out-alt ml-2"></i>تسجيل خروج</button>
+    </div>
+  </header>
+
+  <!-- Main Content -->
+  <main id="main-content" class="flex-1 overflow-y-auto p-4 md:p-8 relative">
+    
+    <!-- Loader -->
+    <div id="loader" class="hidden absolute inset-0 bg-white bg-opacity-80 z-50 flex flex-col justify-center items-center">
+      <div class="loader mb-2"></div>
+      <p class="text-indigo-900 font-bold">جاري العمل...</p>
+    </div>
+
+    <!-- Login Modal -->
+    <div id="login-modal" class="fixed inset-0 bg-indigo-950/80 backdrop-blur-xs z-[100] flex justify-center items-center p-4">
+       <div class="bg-white rounded-2xl shadow-2xl w-full max-w-sm p-8 text-center border border-gray-100">
+          <div class="flex justify-center mb-4">
+             <img src="/favicon.svg" alt="لوجو النظام" class="w-20 h-20 drop-shadow-md rounded-2xl">
+          </div>
+          <h2 class="text-2xl font-bold mb-1 text-gray-800">تسجيل الدخول</h2>
+          <p class="text-xs text-gray-500 mb-6 font-medium">نظام مؤشرات الأداء - مكافحة العدوى</p>
+          <input type="password" id="login-pass" class="w-full border border-gray-300 p-3 rounded-lg mb-4 text-center text-lg focus:outline-hidden focus:border-indigo-600 transition shadow-xs" placeholder="كلمة المرور" onkeypress="if(event.key === 'Enter') doLogin()">
+          <button onclick="doLogin()" class="w-full bg-indigo-600 text-white py-3 rounded-lg font-bold hover:bg-indigo-700 transition shadow-md hover:shadow-lg">دخول</button>
+          <p id="login-error" class="text-red-500 mt-3 hidden text-sm font-bold">كلمة المرور غير صحيحة</p>
+       </div>
+    </div>
+    
+    <!-- General Multi-Select Modal (Departments/Categories) -->
+    <div id="select-modal" class="hidden fixed inset-0 bg-black bg-opacity-60 z-[70] flex justify-center items-center p-4">
+       <div class="bg-white rounded-lg shadow-xl w-full max-w-md p-6">
+          <h3 id="select-modal-title" class="text-lg font-bold mb-4 text-indigo-900 border-b pb-2">...</h3>
+          <div id="select-checkboxes" class="grid grid-cols-2 gap-3 mb-6 max-h-60 overflow-y-auto">
+             <!-- Checkboxes will be injected here -->
+          </div>
+          <div class="flex gap-2">
+            <button onclick="saveSelection()" class="flex-1 bg-indigo-600 text-white py-2 rounded font-bold hover:bg-indigo-700">حفظ الاختيار</button>
+            <button onclick="document.getElementById('select-modal').classList.add('hidden')" class="flex-1 bg-gray-200 text-gray-800 py-2 rounded font-bold hover:bg-gray-300">إلغاء</button>
+          </div>
+       </div>
+    </div>
+
+    <!-- Edit Report Modal (تعديل تقرير المؤشر) -->
+    <div id="edit-report-modal" class="hidden fixed inset-0 bg-black/60 backdrop-blur-xs z-[80] flex justify-center items-center p-3 md:p-6 overflow-y-auto">
+       <div class="bg-white rounded-xl shadow-2xl w-full max-w-4xl max-h-[90vh] flex flex-col border border-gray-200 overflow-hidden">
+          <!-- Modal Header -->
+          <div class="bg-indigo-900 text-white p-4 flex justify-between items-center">
+             <div>
+                <h3 id="edit-modal-title" class="text-lg font-bold">تعديل تقرير المؤشر</h3>
+                <p id="edit-modal-subtitle" class="text-xs text-indigo-200 mt-0.5"></p>
+             </div>
+             <button onclick="closeEditReportModal()" class="text-white hover:text-red-300 text-2xl font-bold p-1 leading-none">&times;</button>
+          </div>
+
+          <!-- Modal Live Stats Bar -->
+          <div class="p-3 bg-slate-50 border-b flex flex-wrap items-center justify-between gap-3 text-sm">
+             <div class="flex items-center gap-3">
+                <span class="text-gray-700 font-bold text-xs">نسبة الامتثال الحالية:</span>
+                <span id="edit-modal-live-score" class="px-3 py-1 rounded-full font-black text-sm bg-indigo-100 text-indigo-800 border border-indigo-200">0%</span>
+                <span id="edit-modal-counts" class="text-xs text-gray-500">(0 مطابقة من 0)</span>
+             </div>
+             <div class="text-xs text-indigo-700 bg-indigo-50 border border-indigo-100 px-2.5 py-1 rounded">
+                <i class="fas fa-info-circle ml-1"></i> تتحدث النسبة فوراً عند تغيير أي إجابة
+             </div>
+          </div>
+
+          <!-- Questions & Sessions List -->
+          <div class="p-4 overflow-y-auto flex-1 max-h-[60vh]">
+             <div class="overflow-x-auto border border-gray-200 rounded-lg shadow-2xs">
+                <table class="w-full text-sm text-right border-collapse">
+                   <thead class="bg-slate-100 text-gray-700 text-xs font-bold border-b">
+                      <tr>
+                         <th class="p-2.5 border-l w-12 text-center">#</th>
+                         <th class="p-2.5 border-l">السؤال / البند</th>
+                         <th class="p-2.5 border-l w-28">القسم / الفئة</th>
+                         <th class="p-2.5 border-l w-56 text-center">الإجابة</th>
+                         <th class="p-2.5 w-48">الملاحظة</th>
+                      </tr>
+                   </thead>
+                   <tbody id="edit-modal-records-body" class="divide-y divide-gray-100">
+                      <!-- Injected dynamically -->
+                   </tbody>
+                </table>
+             </div>
+          </div>
+
+          <!-- Modal Footer -->
+          <div class="p-4 bg-gray-50 border-t flex justify-end gap-3">
+             <button onclick="saveReportEdits()" class="bg-indigo-600 text-white px-6 py-2.5 rounded-lg font-bold text-sm hover:bg-indigo-700 transition shadow flex items-center gap-1.5">
+                <i class="fas fa-save"></i> حفظ التعديلات
+             </button>
+             <button onclick="closeEditReportModal()" class="bg-gray-200 text-gray-700 px-5 py-2.5 rounded-lg font-bold text-sm hover:bg-gray-300 transition">
+                إلغاء
+             </button>
+          </div>
+       </div>
+    </div>
+
+    <!-- Duplicate Report Modal (نسخ مؤشر والتعديل على الشهر والإحصائية) -->
+    <div id="duplicate-report-modal" class="hidden fixed inset-0 bg-black/60 backdrop-blur-xs z-[80] flex justify-center items-center p-3 md:p-6 overflow-y-auto">
+       <div class="bg-white rounded-xl shadow-2xl w-full max-w-4xl max-h-[92vh] flex flex-col border border-gray-200 overflow-hidden">
+          <!-- Modal Header -->
+          <div class="bg-emerald-900 text-white p-4 flex justify-between items-center">
+             <div>
+                <h3 class="text-lg font-bold flex items-center gap-2">
+                   <i class="fas fa-copy text-emerald-300"></i>
+                   <span>نسخ تقرير مؤشر والتعديل عليه</span>
+                </h3>
+                <p class="text-xs text-emerald-200 mt-1">
+                   المؤشر الأصلي: <span id="dup-source-indicator-name" class="font-bold text-white"></span>
+                   <span class="mx-1">|</span>
+                   الشهر الأصلي: <span id="dup-source-month-name" class="font-bold text-emerald-100 font-mono"></span>
+                </p>
+             </div>
+             <button onclick="closeDuplicateReportModal()" class="text-white hover:text-red-300 text-2xl font-bold p-1 leading-none">&times;</button>
+          </div>
+
+          <!-- Configuration: Target Month & Date & Name -->
+          <div class="p-4 bg-emerald-50/50 border-b border-emerald-100">
+             <div class="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                <div>
+                   <label class="block text-xs font-bold text-gray-700 mb-1">
+                      الشهر الجديد المستهدف <span class="text-red-600">*</span>
+                   </label>
+                   <input type="month" id="dup-target-month" class="input text-sm font-bold text-emerald-950 border-emerald-300 bg-white" onchange="onDuplicateTargetMonthChange()">
+                </div>
+                <div>
+                   <label class="block text-xs font-bold text-gray-700 mb-1">
+                      تاريخ التقييم للتقرير الجديد
+                   </label>
+                   <input type="date" id="dup-target-date" class="input text-sm bg-white">
+                </div>
+                <div>
+                   <label class="block text-xs font-bold text-gray-700 mb-1">
+                      اسم المؤشر للتقرير الجديد
+                   </label>
+                   <input type="text" id="dup-target-indicator" class="input text-sm bg-white font-semibold">
+                </div>
+             </div>
+             <p class="text-[11px] text-emerald-800 mt-2 flex items-center gap-1.5">
+                <i class="fas fa-info-circle text-emerald-600"></i>
+                <span>سيتم إنشاء تقرير جديد مستقل للشهر المختار مع إمكانية تعديل الإجابات والملاحظات بالأسفل لتحديد إحصائيته بدقة.</span>
+             </p>
+          </div>
+
+          <!-- Live Stats & Quick Actions Toolbar -->
+          <div class="p-3 bg-slate-50 border-b flex flex-wrap items-center justify-between gap-3 text-sm">
+             <div class="flex items-center gap-2 flex-wrap">
+                <span class="text-xs font-bold text-gray-700">نسبة الامتثال للتقرير الجديد:</span>
+                <span id="dup-modal-live-score" class="px-3 py-1 rounded-full font-black text-sm bg-emerald-100 text-emerald-800 border border-emerald-200 shadow-2xs">0%</span>
+                <span id="dup-modal-counts" class="text-xs text-gray-500 font-medium">(0 مطابقة من 0)</span>
+             </div>
+             <!-- Quick Actions -->
+             <div class="flex items-center gap-1.5 flex-wrap">
+                <button type="button" onclick="setAllDuplicateAnswers('Yes')" class="bg-green-100 hover:bg-green-200 text-green-800 text-xs font-bold px-2.5 py-1 rounded transition border border-green-200 shadow-2xs" title="ضبط جميع البنود كـ 'نعم'">
+                   <i class="fas fa-check-circle ml-1"></i> الكل نعم (100%)
+                </button>
+                <button type="button" onclick="setAllDuplicateAnswers('No')" class="bg-red-100 hover:bg-red-200 text-red-800 text-xs font-bold px-2.5 py-1 rounded transition border border-red-200 shadow-2xs" title="ضبط جميع البنود كـ 'لا'">
+                   <i class="fas fa-times-circle ml-1"></i> الكل لا (0%)
+                </button>
+                <button type="button" onclick="resetDuplicateToOriginal()" class="bg-slate-200 hover:bg-slate-300 text-slate-800 text-xs font-bold px-2.5 py-1 rounded transition border border-slate-300 shadow-2xs" title="استعادة إجابات وملاحظات التقرير الأصلي">
+                   <i class="fas fa-undo ml-1"></i> استعادة الأصل
+                </button>
+                <button type="button" onclick="clearDuplicateNotes()" class="bg-amber-100 hover:bg-amber-200 text-amber-800 text-xs font-bold px-2.5 py-1 rounded transition border border-amber-200 shadow-2xs" title="تفريغ كافة الملاحظات المكتوبة">
+                   <i class="fas fa-eraser ml-1"></i> مسح الملاحظات
+                </button>
+             </div>
+          </div>
+
+          <!-- Questions & Evaluation Items to customize -->
+          <div class="p-4 overflow-y-auto flex-1 max-h-[55vh]">
+             <div class="overflow-x-auto border border-gray-200 rounded-lg shadow-2xs">
+                <table class="w-full text-sm text-right border-collapse">
+                   <thead class="bg-slate-100 text-gray-700 text-xs font-bold border-b">
+                      <tr>
+                         <th class="p-2.5 border-l w-12 text-center">#</th>
+                         <th class="p-2.5 border-l">السؤال / بند التقييم</th>
+                         <th class="p-2.5 border-l w-28">القسم / الفئة</th>
+                         <th class="p-2.5 border-l w-56 text-center">الإجابة (الإحصائية)</th>
+                         <th class="p-2.5 w-48">الملاحظة</th>
+                      </tr>
+                   </thead>
+                   <tbody id="dup-modal-records-body" class="divide-y divide-gray-100">
+                      <!-- Dynamically rendered -->
+                   </tbody>
+                </table>
+             </div>
+          </div>
+
+          <!-- Modal Footer -->
+          <div class="p-4 bg-gray-50 border-t flex justify-end gap-3">
+             <button onclick="saveClonedReport()" class="bg-emerald-600 hover:bg-emerald-700 text-white px-6 py-2.5 rounded-lg font-bold text-sm transition shadow flex items-center gap-2">
+                <i class="fas fa-check-double"></i> حفظ وإنشاء التقرير المنسوخ
+             </button>
+             <button onclick="closeDuplicateReportModal()" class="bg-gray-200 text-gray-700 px-5 py-2.5 rounded-lg font-bold text-sm hover:bg-gray-300 transition">
+                إلغاء
+             </button>
+          </div>
+       </div>
+    </div>
+
+    <!-- Rename Indicator Modal (تعديل اسم المؤشر في الإعدادات) -->
+    <div id="rename-indicator-modal" class="hidden fixed inset-0 bg-black/60 backdrop-blur-xs z-[85] flex justify-center items-center p-4">
+       <div class="bg-white rounded-xl shadow-2xl w-full max-w-lg p-6 border border-gray-200">
+          <div class="flex justify-between items-center border-b pb-3 mb-4">
+             <div class="flex items-center gap-2.5">
+                <span class="w-9 h-9 rounded-lg bg-amber-100 text-amber-700 flex items-center justify-center text-lg shadow-2xs">
+                   <i class="fas fa-edit"></i>
+                </span>
+                <div>
+                   <h3 class="text-base font-bold text-gray-900">تعديل اسم المؤشر</h3>
+                   <p class="text-[11px] text-gray-500">تحديث مسمى المؤشر في الإعدادات والتقارير</p>
+                </div>
+             </div>
+             <button onclick="closeRenameIndicatorModal()" class="text-gray-400 hover:text-gray-600 text-lg transition p-1">
+                <i class="fas fa-times"></i>
+             </button>
+          </div>
+
+          <div class="space-y-4">
+             <div>
+                <label class="block text-xs font-bold text-gray-700 mb-1.5">المؤشر الحالي المراد تعديله:</label>
+                <select id="rename-ind-select" class="input w-full font-bold text-indigo-950 bg-gray-50 border-gray-300" onchange="onRenameIndSelectChange()">
+                   <!-- populated dynamically -->
+                </select>
+             </div>
+
+             <div>
+                <label class="block text-xs font-bold text-gray-700 mb-1.5">الاسم الجديد للمؤشر:</label>
+                <input type="text" id="rename-ind-new-name" placeholder="أدخل اسم المؤشر الجديد هنا..." class="input w-full text-sm font-bold text-gray-900 focus:border-amber-500 focus:ring-amber-500">
+             </div>
+
+             <div class="bg-amber-50/80 border border-amber-200 rounded-lg p-3 text-xs text-amber-900 flex items-start gap-2.5">
+                <i class="fas fa-info-circle text-amber-600 mt-0.5 text-sm shrink-0"></i>
+                <div class="leading-relaxed">
+                   <span id="rename-ind-stats">سيتم تحديث كافة الأسئلة والإجراءات التابعة لهذا المؤشر في الإعدادات تلقائياً.</span>
+                </div>
+             </div>
+
+             <div class="bg-slate-50 border border-slate-200 rounded-lg p-3">
+                <label class="flex items-start gap-2.5 cursor-pointer text-xs font-medium text-gray-800 select-none">
+                   <input type="checkbox" id="rename-ind-update-history" checked class="mt-0.5 w-4 h-4 text-indigo-600 rounded border-gray-300 focus:ring-indigo-500">
+                   <div>
+                      <span class="font-bold text-gray-900">تحديث السجلات والتقارير المحفوظة مسبقاً في قاعدة البيانات</span>
+                      <p class="text-[11px] text-gray-500 mt-0.5 leading-normal">يحافظ على ظهور كافة التقييمات والتقارير الشهرية السابقة تحت الاسم الجديد للمؤشر بدلاً من فصلها.</p>
+                    </div>
+                </label>
+             </div>
+          </div>
+
+          <div class="flex gap-2.5 mt-6 pt-4 border-t border-gray-100">
+             <button onclick="saveRenamedIndicator()" class="flex-1 bg-amber-600 hover:bg-amber-700 text-white py-2.5 px-4 rounded-lg font-bold text-sm shadow transition flex items-center justify-center gap-1.5">
+                <i class="fas fa-check"></i> تطبيق التعديل وحفظ
+             </button>
+             <button onclick="closeRenameIndicatorModal()" class="px-5 bg-gray-100 hover:bg-gray-200 text-gray-700 py-2.5 rounded-lg font-bold text-sm transition">
+                إلغاء
+             </button>
+          </div>
+       </div>
+    </div>
+
+    <!-- Add Procedure Modal (إضافة إجراء جديد للمؤشر والتقارير) -->
+    <div id="add-procedure-modal" class="hidden fixed inset-0 bg-black/60 backdrop-blur-xs z-[85] flex justify-center items-center p-4">
+       <div class="bg-white rounded-xl shadow-2xl w-full max-w-lg p-6 border border-gray-200">
+          <div class="flex justify-between items-center border-b pb-3 mb-4">
+             <div class="flex items-center gap-2.5">
+                <span class="w-9 h-9 rounded-lg bg-emerald-100 text-emerald-700 flex items-center justify-center text-lg shadow-2xs">
+                   <i class="fas fa-stethoscope"></i>
+                </span>
+                <div>
+                   <h3 class="text-base font-bold text-gray-900">إضافة إجراء جديد للمؤشر</h3>
+                   <p class="text-[11px] text-gray-500">إدراج إجراء جديد وتضمينه تلقائياً في التقارير</p>
+                </div>
+             </div>
+             <button onclick="closeAddProcedureModal()" class="text-gray-400 hover:text-gray-600 text-lg transition p-1">
+                <i class="fas fa-times"></i>
+             </button>
+          </div>
+
+          <div class="space-y-4">
+             <div>
+                <label class="block text-xs font-bold text-gray-700 mb-1.5">المؤشر التابع له الإجراء:</label>
+                <select id="modal-proc-ind-select" class="input w-full font-bold text-indigo-950 bg-gray-50 border-gray-300">
+                   <!-- populated dynamically -->
+                </select>
+             </div>
+
+             <div>
+                <label class="block text-xs font-bold text-gray-700 mb-1.5">اسم الإجراء الجديد <span class="text-red-500">*</span>:</label>
+                <input type="text" id="modal-proc-name" placeholder="مثال: غسيل الأيدي الجراحي، تطهير الأسطح..." class="input w-full text-sm font-bold text-gray-900 focus:border-emerald-500 focus:ring-emerald-500">
+             </div>
+
+             <div>
+                <label class="block text-xs font-bold text-gray-700 mb-1.5">السؤال الأول التابع للإجراء <span class="text-red-500">*</span>:</label>
+                <input type="text" id="modal-proc-question" placeholder="مثال: هل تم الالتزام بتعقيم الأدوات قبل الاستخدام؟" class="input w-full text-sm text-gray-900 focus:border-emerald-500 focus:ring-emerald-500">
+             </div>
+
+             <div>
+                <label class="block text-xs font-bold text-gray-700 mb-1.5">ملاحظة الخطأ التلقائية (اختياري):</label>
+                <input type="text" id="modal-proc-note" placeholder="مثال: لم يتم الالتزام بالتعقيم..." class="input w-full text-xs text-gray-700">
+             </div>
+
+             <div class="bg-emerald-50/80 border border-emerald-200 rounded-lg p-3">
+                <label class="flex items-start gap-2.5 cursor-pointer text-xs font-medium text-gray-800 select-none">
+                   <input type="checkbox" id="modal-proc-add-to-reports" checked class="mt-0.5 w-4 h-4 text-emerald-600 rounded border-gray-300 focus:ring-emerald-500">
+                   <div>
+                      <span class="font-bold text-emerald-950">إضافة هذا الإجراء فوراً إلى جميع تقارير وجلسات المؤشر السابقة</span>
+                      <p class="text-[11px] text-emerald-700 mt-0.5 leading-normal">سيتم إدراج الإجراء في جداول نتائج الإجراءات والتقارير الشهرية المسجلة للمؤشر دون انتظار إدخال جديد.</p>
+                   </div>
+                </label>
+             </div>
+          </div>
+
+          <div class="flex gap-2.5 mt-6 pt-4 border-t border-gray-100">
+             <button onclick="saveNewProcedureFromModal()" class="flex-1 bg-emerald-600 hover:bg-emerald-700 text-white py-2.5 px-4 rounded-lg font-bold text-sm shadow transition flex items-center justify-center gap-1.5">
+                <i class="fas fa-check"></i> حفظ وإضافة الإجراء للتقارير
+             </button>
+             <button onclick="closeAddProcedureModal()" class="px-5 bg-gray-100 hover:bg-gray-200 text-gray-700 py-2.5 rounded-lg font-bold text-sm transition">
+                إلغاء
+             </button>
+          </div>
+       </div>
+    </div>
+
+    <!-- 1. HOME (DASHBOARD) -->
+    <section id="home" class="page max-w-6xl mx-auto">
+      <!-- Filters -->
+      <div class="bg-white p-4 rounded-lg shadow-md mb-6 border-t-4 border-indigo-600">
+         <div class="flex flex-col md:flex-row gap-4 items-end">
+            <div class="flex-1 w-full">
+               <label class="label">المؤشر</label>
+               <select id="dash-indicator" class="input" onchange="loadDashboard()"></select>
+            </div>
+            <div class="flex-1 w-full">
+               <label class="label">الشهر</label>
+               <input type="month" id="dash-month" class="input" onchange="loadDashboard()">
+            </div>
+            <div class="flex gap-2 w-full md:w-auto">
+               <button onclick="loadDashboard()" class="flex-1 md:flex-initial bg-indigo-600 text-white px-5 py-2 rounded-lg font-bold hover:bg-indigo-700 h-[42px] transition flex items-center justify-center gap-1.5 shadow">
+                  <i class="fas fa-sync-alt"></i> تحديث
+               </button>
+               <button onclick="exportAllResultsToExcel()" class="flex-1 md:flex-initial bg-emerald-600 hover:bg-emerald-700 text-white px-5 py-2 rounded-lg font-bold hover:shadow-md h-[42px] transition flex items-center justify-center gap-2 shadow" title="حفظ جميع النتائج المدخلة للشهر والمؤشرات في شيت إكسيل">
+                  <i class="fas fa-file-excel text-base"></i> حفظ النتائج كشيت إكسيل
+               </button>
+            </div>
+         </div>
+      </div>
+
+      <!-- Stats Cards -->
+      <div class="grid grid-cols-1 mb-6">
+         <!-- Card: Overall Compliance Only -->
+         <div class="bg-gradient-to-br from-green-500 to-green-600 text-white p-6 rounded-lg shadow-md flex items-center justify-between">
+            <div>
+               <p class="text-green-100 text-sm font-bold">نسبة الالتزام العامة</p>
+               <h3 class="text-3xl font-bold mt-1" id="stat-compliance">0%</h3>
+            </div>
+            <div class="bg-white bg-opacity-20 p-3 rounded-full">
+               <i class="fas fa-percent text-2xl"></i>
+            </div>
+         </div>
+      </div>
+
+      <!-- Monthly Charts Area (Side by Side) -->
+      <div class="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-8">
+         <!-- Monthly Chart (Department) -->
+         <div class="bg-white p-4 rounded-lg shadow-md border border-gray-100">
+            <h3 class="font-bold text-gray-700 mb-4 border-b pb-2">
+               <i class="fas fa-building text-teal-500 ml-2"></i>
+               نسبة الالتزام حسب الأقسام (للشهر المحدد)
+            </h3>
+            <div class="relative h-64">
+               <canvas id="chart-dept"></canvas>
+            </div>
+         </div>
+
+         <!-- Monthly Chart (Category) -->
+         <div class="bg-white p-4 rounded-lg shadow-md border border-gray-100">
+            <h3 class="font-bold text-gray-700 mb-4 border-b pb-2">
+               <i class="fas fa-users text-indigo-500 ml-2"></i>
+               نسبة الالتزام حسب الفئات (للشهر المحدد)
+            </h3>
+            <div class="relative h-64">
+               <canvas id="chart-cat"></canvas>
+            </div>
+         </div>
+      </div>
+
+      <!-- Annual Chart (Full Width) -->
+      <div class="bg-white p-4 rounded-lg shadow-md border border-gray-100 mb-8">
+         <h3 class="font-bold text-gray-700 mb-4 border-b pb-2">
+            <i class="fas fa-chart-line text-purple-500 ml-2"></i>
+            التطور السنوي للمؤشر (العام الحالي)
+         </h3>
+         <div class="relative h-64">
+            <canvas id="chart-annual"></canvas>
+         </div>
+      </div>
+    </section>
+
+    <!-- 2. ENTRY FORM -->
+    <section id="entry" class="page hidden max-w-5xl mx-auto">
+      <div class="bg-white rounded-lg shadow p-6 border-t-4 border-indigo-600">
+         <h2 class="text-2xl font-bold text-indigo-900 mb-6 border-b pb-2">بيانات الجلسة</h2>
+         
+         <!-- Filters -->
+         <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 mb-6">
+            <div>
+              <label class="label">التاريخ</label>
+              <input type="date" id="date" class="input">
+            </div>
+            <div>
+              <label class="label">القائم بالتقييم</label>
+              <select id="inspector" class="input"></select>
+            </div>
+            <div>
+              <label class="label">القسم <span class="text-xs text-gray-400 font-normal">(اختياري)</span></label>
+              <select id="department" class="input" onchange="checkSession()"></select>
+            </div>
+            <div>
+              <label class="label">الفئة المستهدفة <span class="text-xs text-gray-400 font-normal">(اختياري)</span></label>
+              <select id="category" class="input" onchange="checkSession()"></select>
+            </div>
+            <div>
+              <label class="label">المؤشر</label>
+              <select id="indicator" class="input" onchange="onIndicatorChange()"></select>
+            </div>
+            <div>
+              <label class="label">الاسم (اختياري)</label>
+              <input type="text" id="target_name" class="input" placeholder="اسم المستهدف بالتقييم">
+            </div>
+            <div>
+              <label class="label">الوظيفة / الرقم الطبي (اختياري)</label>
+              <input type="text" id="target_job_id" class="input" placeholder="الوظيفة أو الرقم">
+            </div>
+            
+            <!-- Session Counter Display -->
+            <div class="bg-indigo-50 border border-indigo-200 rounded p-3 flex flex-col justify-center shadow-sm">
+               <div class="flex justify-between items-center text-sm text-indigo-900 font-bold mb-1">
+                 <span><i class="fas fa-bookmark text-indigo-600 ml-1"></i> رقم الجلسة الحالية:</span>
+                 <span id="session-display" class="text-base font-black text-indigo-800 bg-white px-3 py-0.5 rounded border border-indigo-200 shadow-xs">-</span>
+               </div>
+               <div class="flex justify-between items-center text-xs text-gray-600 mt-1.5 border-t border-indigo-100 pt-1.5">
+                 <span>عدد الجلسات المحفوظة هذا الشهر:</span>
+                 <span id="session-count-text" class="font-bold text-gray-800">0</span>
+               </div>
+            </div>
+         </div>
+
+         <!-- Warning -->
+         <div id="limit-msg" class="hidden bg-red-100 text-red-700 p-3 rounded mb-4 font-bold text-center border border-red-200">
+           <i class="fas fa-check-circle"></i> تم اكتمال الحد المطلوب لهذا المؤشر هذا الشهر.
+         </div>
+
+         <!-- Questions -->
+         <div id="questions-area" class="hidden">
+            <h3 class="font-bold text-gray-700 mb-3 bg-gray-100 p-2 rounded">بنود التقييم</h3>
+            <div id="q-list" class="space-y-3 mb-6"></div>
+            
+            <!-- Live Score & Average Display Card -->
+            <div class="bg-gradient-to-r from-indigo-50 via-blue-50 to-teal-50 border border-indigo-200 rounded-lg p-4 mb-6 shadow-xs">
+               <div class="grid grid-cols-1 md:grid-cols-2 gap-4 text-center divide-y md:divide-y-0 md:divide-x md:divide-x-reverse divide-indigo-100">
+                  
+                  <!-- 1. Current Session Result (نتيجة الجلسة الحالية) -->
+                  <div class="flex flex-col items-center justify-center p-2">
+                     <span class="text-xs font-bold text-indigo-900 mb-1">نتيجة التقييم الحالية</span>
+                     <div class="flex items-center gap-2">
+                        <span id="live-score" class="text-3xl font-black text-gray-400">0%</span>
+                        <span id="live-status-badge" class="px-2.5 py-0.5 rounded-full text-xs font-bold bg-gray-200 text-gray-700">غير مكتمل</span>
+                     </div>
+                     <span id="live-items-breakdown" class="text-xs text-gray-500 mt-1">0 من 0 بنود مطابقة</span>
+                  </div>
+
+                  <!-- 2. General Commitment Rate (نسبة الالتزام العامة) -->
+                  <div class="flex flex-col items-center justify-center p-2 pt-3 md:pt-2">
+                     <span class="text-xs font-bold text-indigo-900 mb-1">نسبة الالتزام العامة</span>
+                     <span id="overall-projected-avg" class="text-3xl font-black text-teal-700">0%</span>
+                     <span id="overall-avg-subtitle" class="text-xs text-teal-600 mt-1">تشمل الجلسة الحالية</span>
+                  </div>
+
+               </div>
+            </div>
+
+             <div class="flex flex-col sm:flex-row gap-3">
+                <button onclick="submitForm()" class="flex-1 bg-indigo-600 hover:bg-indigo-700 text-white py-3 px-6 rounded-lg font-bold transition shadow flex items-center justify-center gap-2">
+                   <i class="fas fa-save"></i> حفظ التقييم
+                </button>
+                <button type="button" onclick="exportCurrentMonthEntryExcel()" class="bg-emerald-600 hover:bg-emerald-700 text-white py-3 px-5 rounded-lg font-bold text-sm transition shadow flex items-center justify-center gap-2" title="حفظ وتصدير نتائج المؤشرات لهذا الشهر في شيت إكسيل">
+                   <i class="fas fa-file-excel text-base"></i> حفظ النتائج كشيت إكسيل
+                </button>
+             </div>
+         </div>
+
+      </div>
+    </section>
+
+    <!-- 3. REPORT -->
+    <section id="report" class="page hidden max-w-6xl mx-auto space-y-6">
+       
+       <!-- 1. Controls & Filters (no-print) -->
+       <div class="no-print bg-white p-5 rounded-lg shadow-sm border border-gray-200">
+          <div class="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 mb-4 border-b pb-4">
+             <div>
+                <h2 class="text-xl font-black text-indigo-950 flex items-center gap-2">
+                   <i class="fas fa-file-invoice text-indigo-600"></i>
+                   تقارير مؤشرات الأداء
+                </h2>
+                <p class="text-xs text-gray-500 mt-1">عرض، تعديل، طباعة فردية، أو تحديد جماعي لطباعة تقارير المؤشرات</p>
+             </div>
+             <div class="flex items-center gap-2 flex-wrap">
+                <button id="btn-export-excel" onclick="exportReportsToExcel()" class="bg-emerald-600 hover:bg-emerald-700 text-white px-4 py-2 rounded-lg font-bold text-sm transition shadow flex items-center gap-2" title="تصدير التقارير المحددة أو كافة التقارير المعروضة إلى شيت إكسيل">
+                   <i class="fas fa-file-excel text-base"></i>
+                   <span>حفظ كشيت إكسيل (<span id="excel-export-count">الكل</span>)</span>
+                </button>
+                <button id="btn-print-selected" onclick="printSelectedReports()" class="bg-indigo-600 hover:bg-indigo-700 text-white px-4 py-2 rounded-lg font-bold text-sm transition shadow flex items-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed" disabled>
+                   <i class="fas fa-print"></i>
+                   طباعة التقارير المحددة (<span id="selected-reports-count">0</span>)
+                </button>
+             </div>
+          </div>
+
+          <div class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-3 items-end">
+             <div>
+                <label class="label text-xs">تصفية بشهر محدد (اختياري)</label>
+                <input type="month" id="rep-month" class="input text-sm" placeholder="جميع الشهور" onchange="loadReportsList()">
+             </div>
+             <div>
+                <label class="label text-xs">بحث باسم المؤشر أو الشهر</label>
+                <div class="relative">
+                   <input type="text" id="rep-search" class="input text-sm pl-8" placeholder="اكتب اسم المؤشر أو الشهر..." oninput="filterReportsTable()">
+                   <i class="fas fa-search absolute left-2.5 top-3 text-gray-400 text-xs"></i>
+                </div>
+             </div>
+             <div class="flex gap-2">
+                <button onclick="loadReportsList()" class="flex-1 bg-indigo-600 text-white py-2 rounded-md font-bold text-xs hover:bg-indigo-700 h-[40px] transition">
+                   <i class="fas fa-filter ml-1"></i> تصفية
+                </button>
+                <button onclick="showAllMonthsReports()" class="flex-1 bg-emerald-50 text-emerald-800 border border-emerald-300 py-2 rounded-md font-bold text-xs hover:bg-emerald-100 h-[40px] transition" title="عرض كافة التقارير لجميع الشهور المسجلة">
+                   <i class="fas fa-calendar-alt ml-1"></i> جميع الشهور
+                </button>
+             </div>
+             <div class="text-left flex items-center justify-end h-[40px]">
+                <button type="button" onclick="toggleSelectAllReports()" class="text-xs font-semibold text-indigo-700 hover:text-indigo-900 bg-indigo-50 border border-indigo-200 px-3 py-2 rounded-md transition">
+                   <i class="fas fa-check-double ml-1"></i> تحديد / إلغاء الكل
+                </button>
+             </div>
+          </div>
+       </div>
+
+       <!-- 2. Reports Table (no-print) -->
+       <div class="no-print bg-white rounded-lg shadow-sm border border-gray-200 overflow-hidden">
+          <div class="p-3 bg-slate-50 border-b flex justify-between items-center">
+             <span class="text-xs font-bold text-gray-700">قائمة تقارير المؤشرات</span>
+             <span id="reports-table-count" class="text-xs text-gray-500 font-medium">جاري التحميل...</span>
+          </div>
+          <div class="overflow-x-auto">
+             <table class="w-full text-sm text-right border-collapse">
+                <thead class="bg-slate-100 text-slate-700 text-xs font-bold border-b border-gray-200">
+                   <tr>
+                      <th class="p-3 border-l text-center w-12">
+                         <input type="checkbox" id="select-all-checkbox" onchange="toggleSelectAllReports(this.checked)" class="w-4 h-4 accent-indigo-600 cursor-pointer" title="تحديد / إلغاء تحديد الكل">
+                      </th>
+                      <th class="p-3 border-l w-28">الشهر</th>
+                      <th class="p-3 border-l">المؤشر</th>
+                      <th class="p-3 border-l text-center w-36">النسبة (الامتثال)</th>
+                      <th class="p-3 border-l text-center w-28">التقييمات</th>
+                      <th class="p-3 text-center w-72">الإجراءات</th>
+                   </tr>
+                </thead>
+                <tbody id="reports-table-body" class="divide-y divide-gray-100">
+                   <!-- Rows loaded via JavaScript -->
+                </tbody>
+             </table>
+          </div>
+       </div>
+
+       <!-- 3. Printable Report Content Area (#rep-content) -->
+       <div id="rep-content" class="bg-white p-8 rounded shadow min-h-[400px] hidden">
+          <!-- Toolbar in Preview Mode (no-print) -->
+          <div class="no-print flex flex-wrap justify-between items-center gap-3 bg-indigo-50 border border-indigo-200 p-3 rounded-lg mb-6">
+             <div class="flex items-center gap-2 text-indigo-900 font-bold text-sm">
+                <i class="fas fa-eye text-indigo-600"></i>
+                <span id="rep-preview-label">معاينة التقرير المجهز للطباعة</span>
+             </div>
+             <div class="flex items-center gap-2 flex-wrap">
+                <button onclick="exportCurrentPreviewToExcel()" class="bg-emerald-600 hover:bg-emerald-700 text-white px-3.5 py-1.5 rounded-md font-bold text-xs shadow transition flex items-center gap-1.5" title="حفظ هذا التقرير في شيت إكسيل">
+                   <i class="fas fa-file-excel"></i> حفظ في شيت إكسيل
+                </button>
+                <button onclick="window.print()" class="bg-gray-900 hover:bg-black text-white px-4 py-1.5 rounded-md font-bold text-xs shadow transition flex items-center gap-1.5">
+                   <i class="fas fa-print"></i> طباعة الآن
+                </button>
+                <button onclick="hideReportPreview()" class="bg-white hover:bg-gray-100 text-gray-700 border border-gray-300 px-3 py-1.5 rounded-md font-semibold text-xs transition">
+                   <i class="fas fa-arrow-up ml-1"></i> إغلاق المعاينة والعودة للجدول
+                </button>
+             </div>
+          </div>
+
+          <!-- Report Pages Container -->
+          <div id="rep-tables" class="space-y-6"></div>
+          
+          <div class="mt-8 text-center no-print action-print hidden">
+            <button onclick="window.print()" class="bg-gray-800 text-white px-6 py-2 rounded hover:bg-gray-700"><i class="fas fa-print ml-2"></i> طباعة</button>
+          </div>
+       </div>
+    </section>
+
+    <!-- 4. SETTINGS -->
+    <section id="settings" class="page hidden max-w-6xl mx-auto">
+       <div class="flex justify-between items-center mb-6">
+         <h2 class="text-2xl font-bold text-gray-800">الإعدادات العامة</h2>
+         <button onclick="saveConfig()" class="bg-green-600 text-white px-6 py-2 rounded font-bold hover:bg-green-700">حفظ الكل</button>
+       </div>
+
+       <div class="space-y-6">
+          <div class="bg-white p-4 rounded shadow border border-gray-200">
+             <h3 class="font-bold text-indigo-900 mb-4">بيانات المنشأة</h3>
+             <div>
+                <label class="label">إسم المنشأة (يظهر في التقارير والهيدر)</label>
+                <input type="text" id="set-hospital-name" class="input">
+             </div>
+          </div>
+
+          <div class="bg-white p-4 rounded shadow border border-gray-200">
+             <h3 class="font-bold text-indigo-900 mb-4">كلمات المرور</h3>
+             <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+                <div>
+                   <label class="label">كلمة مرور Admin</label>
+                   <input type="text" id="set-pass-admin" class="input">
+                </div>
+                <div>
+                   <label class="label">كلمة مرور Manager</label>
+                   <input type="text" id="set-pass-manager" class="input">
+                </div>
+                <div>
+                   <label class="label">كلمة مرور User</label>
+                   <input type="text" id="set-pass-user" class="input">
+                </div>
+             </div>
+          </div>
+
+          <div class="bg-white p-4 rounded shadow border border-gray-200">
+             <h3 class="font-bold text-indigo-900 mb-2">القائمين بالتقييم</h3>
+             <textarea id="set-insp" class="input h-24" placeholder="كل اسم في سطر"></textarea>
+          </div>
+          
+          <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+             <div class="bg-white p-4 rounded shadow border border-gray-200">
+                <h3 class="font-bold text-indigo-900 mb-2">الأقسام</h3>
+                <textarea id="set-dept" class="input h-32"></textarea>
+             </div>
+             <div class="bg-white p-4 rounded shadow border border-gray-200">
+                <h3 class="font-bold text-indigo-900 mb-2">الفئات</h3>
+                <textarea id="set-cat" class="input h-32"></textarea>
+             </div>
+          </div>
+
+          <div class="hidden bg-white p-4 rounded shadow border border-gray-200">
+             <h3 class="font-bold text-indigo-900 mb-4">أهداف الجلسات</h3>
+             <div id="set-targets-list" class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4">
+                <!-- Dynamically populated targets list -->
+             </div>
+          </div>
+
+          <div class="bg-white p-4 rounded shadow border border-gray-200">
+             <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-2 mb-4 pb-3 border-b border-gray-100">
+                <div>
+                   <h3 class="font-bold text-indigo-900 text-lg">المؤشرات والأسئلة</h3>
+                   <p class="text-xs text-gray-500 mt-0.5">إدارة مؤشرات الأداء، الإجراءات، وتعديل أسماء المؤشرات والأسئلة</p>
+                </div>
+                <div class="flex items-center gap-2 flex-wrap">
+                   <button type="button" onclick="openAddProcedureModal()" class="text-xs bg-emerald-50 hover:bg-emerald-100 text-emerald-900 border border-emerald-300 px-3.5 py-1.5 rounded-lg font-bold transition flex items-center gap-1.5 shadow-2xs" title="إضافة إجراء جديد وربطه بالمؤشر والتقارير">
+                      <i class="fas fa-plus-circle text-emerald-600"></i> إضافة إجراء جديد
+                   </button>
+                   <button type="button" onclick="openRenameIndicatorModal()" class="text-xs bg-amber-50 hover:bg-amber-100 text-amber-900 border border-amber-300 px-3.5 py-1.5 rounded-lg font-bold transition flex items-center gap-1.5 shadow-2xs">
+                      <i class="fas fa-edit text-amber-600"></i> تعديل اسم مؤشر
+                   </button>
+                </div>
+             </div>
+             
+             <!-- Manual Entry -->
+             <div class="mb-6 bg-gray-50 p-3.5 rounded-lg border border-gray-200">
+                <h4 class="text-sm font-bold text-gray-700 mb-2.5 flex items-center gap-1.5">
+                   <i class="fas fa-plus-circle text-indigo-600"></i> 1. إضافة يدوية (مؤشر / إجراء / سؤال)
+                </h4>
+                <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-2.5 mb-2.5">
+                   <div>
+                      <label class="block text-[11px] font-bold text-gray-600 mb-1">اسم المؤشر:</label>
+                      <input type="text" id="new-ind-name" list="existing-indicators-list" placeholder="مثال: نظافة الأيدي" class="input text-sm w-full">
+                      <datalist id="existing-indicators-list"></datalist>
+                   </div>
+                   <div>
+                      <label class="block text-[11px] font-bold text-gray-600 mb-1">الإجراء:</label>
+                      <input type="text" id="new-ind-proc" list="existing-procedures-list" placeholder="مثال: غسل الأيدي وتطهيرها" class="input text-sm w-full">
+                      <datalist id="existing-procedures-list"></datalist>
+                   </div>
+                   <div>
+                      <label class="block text-[11px] font-bold text-gray-600 mb-1">السؤال:</label>
+                      <input type="text" id="new-ind-q" placeholder="مثال: هل قام بغسل الأيدي (اللحظة 1)؟" class="input text-sm w-full">
+                   </div>
+                   <div>
+                      <label class="block text-[11px] font-bold text-gray-600 mb-1">ملاحظة الخطأ:</label>
+                      <input type="text" id="new-ind-note" placeholder="مثال: لم يلتزم قبل لمس المريض" class="input text-sm w-full">
+                   </div>
+                </div>
+                <button onclick="addManualKPI()" class="bg-indigo-600 text-white px-5 py-2 rounded-lg text-sm font-bold hover:bg-indigo-700 w-full md:w-auto transition shadow-sm">
+                   <i class="fas fa-plus ml-1"></i> إضافة السؤال للإجراء والمؤشر
+                </button>
+             </div>
+
+             <!-- Excel Import -->
+             <div class="mb-4">
+                <div class="flex flex-col sm:flex-row justify-between items-start sm:items-end gap-1 mb-1.5">
+                   <h4 class="text-sm font-bold text-gray-700 flex items-center gap-1.5">
+                      <i class="fas fa-file-excel text-green-600"></i> 2. استيراد من إكسيل (نسخ ولصق)
+                   </h4>
+                   <span class="text-[11px] text-indigo-900 bg-indigo-50 px-2.5 py-1 rounded border border-indigo-200 font-medium">
+                      الترتيب في إكسيل: العمود 1 (المؤشر) | العمود 2 (الإجراء) | العمود 3 (السؤال) | العمود 4 (ملاحظة الخطأ)
+                   </span>
+                </div>
+                <div class="flex gap-2 items-start">
+                   <textarea id="bulk-kpi" class="input h-16 text-xs font-mono" placeholder="الصق البيانات هنا من الإكسيل مباشرة (المؤشر | الإجراء | السؤال | الملاحظة)..."></textarea>
+                   <button onclick="importKPIs()" class="bg-teal-600 hover:bg-teal-700 text-white px-4 py-2 rounded-lg font-bold text-sm h-16 whitespace-nowrap transition shadow-sm">
+                      <i class="fas fa-file-import block text-lg mb-1"></i> استيراد
+                   </button>
+                </div>
+             </div>
+
+             <div class="overflow-x-auto border border-gray-200 rounded-lg max-h-96 overflow-y-auto shadow-xs">
+                <table class="w-full text-xs text-right relative">
+                   <thead class="bg-gray-100 sticky top-0 shadow-xs z-10 text-gray-700">
+                      <tr>
+                         <th class="p-2.5 border">المؤشر</th>
+                         <th class="p-2.5 border text-indigo-900 bg-indigo-50/70">الإجراء</th>
+                         <th class="p-2.5 border">السؤال</th>
+                         <th class="p-2.5 border">ملاحظة الخطأ</th>
+                         <th class="p-2.5 border text-center">الفئات المختصة</th>
+                         <th class="p-2.5 border text-center">الأقسام المختصة</th>
+                         <th class="p-2.5 border w-12 text-center">حذف</th>
+                      </tr>
+                   </thead>
+                   <tbody id="kpi-set-list"></tbody>
+                </table>
+             </div>
+          </div>
+       </div>
+    </section>
+
+    <!-- 5. INDIVIDUAL ASSESSMENTS -->
+    <section id="individuals" class="page hidden max-w-6xl mx-auto">
+       <div class="bg-white rounded-lg shadow p-6 border-t-4 border-indigo-600">
+          <div class="flex justify-between items-center mb-6 border-b pb-2">
+             <h2 class="text-2xl font-bold text-indigo-900">التقييمات الفردية</h2>
+             <button onclick="window.print()" class="bg-gray-800 text-white px-4 py-1 rounded hover:bg-gray-700 no-print text-sm"><i class="fas fa-print ml-2"></i> طباعة</button>
+          </div>
+          
+          <!-- Filters -->
+          <div class="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6 no-print">
+             <div>
+                <label class="label">الشهر</label>
+                <input type="month" id="indiv-month" class="input" onchange="filterIndividuals()">
+             </div>
+             <div>
+                <label class="label">المؤشر</label>
+                <select id="indiv-indicator" class="input" onchange="filterIndividuals()">
+                  <option value="">جميع المؤشرات</option>
+                </select>
+             </div>
+             <div class="md:col-span-2">
+                <label class="label">بحث بالاسم / الوظيفة</label>
+                <input type="text" id="indiv-search" class="input" placeholder="اكتب الاسم أو الوظيفة للبحث..." onkeyup="filterIndividuals()">
+             </div>
+          </div>
+          
+          <div class="overflow-x-auto">
+             <table class="w-full text-sm text-right border text-gray-700 relative">
+                <thead class="bg-gray-100 border-b shadow-sm table-header-group">
+                   <!-- Print Header -->
+                   <tr class="hidden print-table-row">
+                      <td colspan="7" class="bg-white">
+                        <div class="border-b-2 border-gray-800 pb-4 mb-6 text-center print-header">
+                           <h1 id="indiv-hospital-name" class="text-xl font-bold text-gray-900">مستشفى المنيا الجامعي للعيون</h1>
+                           <p class="text-gray-600 text-sm">وحدة مكافحة العدوى - تقييمات الأداء الفردية</p>
+                           <p id="indiv-print-title" class="font-bold text-indigo-800 mt-1"></p>
+                        </div>
+                      </td>
+                   </tr>
+                   <tr>
+                      <th class="p-3 border">التاريخ</th>
+                      <th class="p-3 border">الاسم</th>
+                      <th class="p-3 border">الوظيفة / الرقم</th>
+                      <th class="p-3 border">المؤشر</th>
+                      <th class="p-3 border text-center">التقييم</th>
+                      <th class="p-3 border">الملاحظات (الأخطاء)</th>
+                      <th class="p-3 border text-center">الكفاءة والتوصية</th>
+                   </tr>
+                </thead>
+                <tbody id="indiv-tbody">
+                </tbody>
+             </table>
+          </div>
+       </div>
+    </section>
+
+  </main>
+
+  <!-- Footer -->
+  <footer class="bg-indigo-900 text-white text-center py-3 text-sm no-print flex-shrink-0">
+    &copy; 2026 Dr. Fady Ezzat. All Rights Reserved
+  </footer>
+
+  <script>
+    // --- Styles Helper ---
+    const INPUT_CLASS = "w-full border border-gray-300 p-2 rounded focus:outline-none focus:border-indigo-500 bg-white";
+    document.querySelectorAll('.input').forEach(el => el.className = INPUT_CLASS);
+    document.querySelectorAll('.label').forEach(el => el.className = "block text-sm font-bold mb-1 text-gray-600");
+
+    // --- State & Config ---
+    let config = {};
+    let currentSession = null;
+    let editState = { idx: -1, type: '' }; // Track which KPI and which field (cats/depts) we are editing
+    let currentUserRole = null;
+    
+    // --- Charts Instances ---
+    let chartCat = null;
+    let chartDept = null;
+    let chartAnnual = null;
+
+    // --- Helper Functions ---
+    const el = (id) => document.getElementById(id);
+    const show = (id) => el(id).classList.remove('hidden');
+    const hide = (id) => el(id).classList.add('hidden');
+    const loading = (state) => state ? show('loader') : hide('loader');
+
+    function getProcedureForQuestion(qText, indName) {
+       if (!config || !config.indicators) return 'عام';
+       const match = config.indicators.find(i => 
+          (!indName || String(i.indicator).trim() === String(indName).trim()) && 
+          String(i.question).trim() === String(qText).trim()
+       );
+       return (match && match.procedure) ? String(match.procedure).trim() : 'عام';
+    }
+
+    // --- Navigation ---
+    function nav(pageId) {
+       if (pageId === 'settings' && currentUserRole !== 'admin') return;
+       if (pageId === 'entry' && currentUserRole === 'manager') return;
+       
+       document.querySelectorAll('.page').forEach(p => p.classList.add('hidden'));
+       show(pageId);
+       document.getElementById('mobile-menu').classList.add('hidden');
+       
+       if (pageId === 'entry') initEntry();
+       if (pageId === 'home') initDashboard();
+       if (pageId === 'report') initReport();
+       if (pageId === 'individuals') loadIndividuals();
+       if (Object.keys(config).length === 0) loadSettings();
+    }
+
+    // --- Report Initialization ---
+    function initReport() {
+       // Display all recorded months in the table by default as requested
+       el('rep-month').value = '';
+       loadReportsList('all');
+    }
+
+    // --- Data Loading ---
+    function loadSettings() {
+       loading(true);
+       google.script.run.withSuccessHandler(data => {
+          config = data;
+          
+          // Update Brand Name UI
+          if(config.hospital_name) {
+             el('brand-name').innerText = config.hospital_name;
+             if(el('rep-hospital-name')) el('rep-hospital-name').innerText = config.hospital_name;
+             if(el('indiv-hospital-name')) el('indiv-hospital-name').innerText = config.hospital_name;
+          }
+
+          fillDropdowns();
+          renderSettingsPage();
+          loading(false);
+          // If we are on home page and settings loaded, trigger dashboard update
+          if (!el('home').classList.contains('hidden')) {
+              initDashboard();
+          }
+       }).withFailureHandler(err => {
+          alert('خطأ في الاتصال: ' + err);
+          loading(false);
+       }).getAppSettings();
+    }
+
+    function fillDropdowns() {
+       const fill = (id, arr, isOptional = false) => {
+          const select = el(id);
+          if (!select) return;
+          const current = select.value;
+          const placeholder = isOptional ? '-- بدون تحديد (اختياري) --' : '-- اختر --';
+          select.innerHTML = `<option value="">${placeholder}</option>` + (arr||[]).map(x => `<option value="${x}">${x}</option>`).join('');
+          if(current) select.value = current;
+       };
+       fill('inspector', config.inspectors, false);
+       fill('department', config.departments, true);
+       fill('category', config.categories, true);
+       
+       // Unique Indicators
+       const inds = [...new Set((config.indicators||[]).map(i => i.indicator))];
+       fill('indicator', inds, false);
+       fill('dash-indicator', inds, false);
+    }
+    
+    // --- Dashboard Logic ---
+    function initDashboard() {
+       const today = new Date();
+       const m = today.toISOString().slice(0, 7); // YYYY-MM
+       
+       const monthInput = el('dash-month');
+       if(!monthInput.value) monthInput.value = m;
+       
+       // If indicators are loaded but none selected, select first one
+       const indSelect = el('dash-indicator');
+       if(!indSelect.value && indSelect.options.length > 1) {
+          indSelect.selectedIndex = 1;
+       }
+       
+       if(indSelect.value) loadDashboard();
+    }
+    
+    function loadDashboard() {
+       const ind = el('dash-indicator').value;
+       const mon = el('dash-month').value;
+       
+       if(!ind || !mon) return; // Wait for selection
+       
+       loading(true);
+       google.script.run.withSuccessHandler(data => {
+          renderDashboardCharts(data);
+          loading(false);
+       }).getDashboardData(ind, mon);
+    }
+    
+    // Custom Plugin to Draw Percentages
+    const percentageLabelPlugin = {
+      id: 'percentageLabel',
+      afterDatasetsDraw(chart, args, options) {
+         const { ctx } = chart;
+         chart.data.datasets.forEach((dataset, i) => {
+            const meta = chart.getDatasetMeta(i);
+            if(meta.hidden) return;
+            meta.data.forEach((element, index) => {
+               const data = dataset.data[index];
+               // Draw text only if data > 0
+               if (typeof data === 'number' && data > 0) {
+                  ctx.save();
+                  ctx.fillStyle = '#1e293b'; // slate-800
+                  ctx.font = 'bold 11px Tajawal';
+                  ctx.textAlign = 'center';
+                  ctx.textBaseline = 'bottom';
+                  
+                  // Position for bar: x = center, y = top - margin
+                  // Position for line: x = x, y = y - margin
+                  const x = element.x;
+                  const y = element.y - 4;
+                  
+                  ctx.fillText(data + '%', x, y);
+                  ctx.restore();
+               }
+            });
+         });
+      }
+    };
+
+    function renderDashboardCharts(data) {
+       // Stats
+       el('stat-compliance').innerText = data.overallCompliance + '%';
+       el('stat-compliance').className = "text-3xl font-bold mt-1 " + (data.overallCompliance >= 80 ? "text-green-200" : "text-yellow-200");
+       
+       const commonOptions = {
+          responsive: true,
+          maintainAspectRatio: false,
+          scales: { y: { beginAtZero: true, max: 100 } },
+          plugins: {
+             legend: { display: false }, // Optional: hide legend if single dataset
+             tooltip: { enabled: true }
+          }
+       };
+
+       // 1. Monthly Chart - Departments
+       if(chartDept) chartDept.destroy();
+       const ctxD = el('chart-dept').getContext('2d');
+       chartDept = new Chart(ctxD, {
+          type: 'bar',
+          data: {
+             labels: data.monthlyDept.labels,
+             datasets: [{
+                label: 'نسبة الالتزام %',
+                data: data.monthlyDept.data,
+                backgroundColor: 'rgba(20, 184, 166, 0.7)', // Teal
+                borderColor: 'rgba(20, 184, 166, 1)',
+                borderWidth: 1
+             }]
+          },
+          options: commonOptions,
+          plugins: [percentageLabelPlugin]
+       });
+
+       // 2. Monthly Chart - Categories
+       if(chartCat) chartCat.destroy();
+       const ctxC = el('chart-cat').getContext('2d');
+       chartCat = new Chart(ctxC, {
+          type: 'bar',
+          data: {
+             labels: data.monthlyCat.labels,
+             datasets: [{
+                label: 'نسبة الالتزام %',
+                data: data.monthlyCat.data,
+                backgroundColor: 'rgba(79, 70, 229, 0.7)', // Indigo
+                borderColor: 'rgba(79, 70, 229, 1)',
+                borderWidth: 1
+             }]
+          },
+          options: commonOptions,
+          plugins: [percentageLabelPlugin]
+       });
+       
+       // 3. Annual Chart
+       if(chartAnnual) chartAnnual.destroy();
+       const ctxA = el('chart-annual').getContext('2d');
+       chartAnnual = new Chart(ctxA, {
+          type: 'line',
+          data: {
+             labels: data.annual.labels,
+             datasets: [{
+                label: 'التطور السنوي %',
+                data: data.annual.data,
+                borderColor: 'rgba(147, 51, 234, 1)', // Purple
+                backgroundColor: 'rgba(147, 51, 234, 0.1)',
+                fill: true,
+                tension: 0.3
+             }]
+          },
+          options: commonOptions,
+          plugins: [percentageLabelPlugin]
+       });
+    }
+
+    // --- Entry Logic ---
+    function initEntry() {
+       el('date').value = new Date().toISOString().split('T')[0];
+       el('target_name').value = '';
+       el('target_job_id').value = '';
+       hide('questions-area');
+       hide('limit-msg');
+       el('session-display').innerText = '-';
+       if(el('session-count-text')) el('session-count-text').innerText = '0';
+    }
+
+    function checkSession() {
+       const date = el('date').value;
+       const ind = el('indicator').value;
+       
+       if(!date || !ind) {
+          el('session-display').innerText = '-';
+          if(el('session-count-text')) el('session-count-text').innerText = '0';
+          return;
+       }
+       
+       const dept = el('department').value;
+       const cat = el('category').value;
+       const insp = el('inspector').value;
+
+       loading(true);
+       google.script.run.withSuccessHandler(res => {
+          currentSession = res;
+          const nextSessionNum = res.nextSession || (res.currentCount + 1);
+          el('session-display').innerText = `الجلسة رقم ${nextSessionNum}`;
+          if(el('session-count-text')) {
+             el('session-count-text').innerText = `${res.currentCount || 0} جلسة/جلسات`;
+          }
+          
+          hide('limit-msg');
+          loadQuestions(); 
+          loading(false);
+       }).withFailureHandler(err => {
+          loading(false);
+          console.error(err);
+       }).getSessionStatus(insp, dept, cat, ind, date);
+    }
+
+    function onIndicatorChange() {
+       updateEntryDropdowns();
+       checkSession();
+    }
+
+    function updateEntryDropdowns() {
+       const indName = el('indicator').value;
+       const deptSelect = el('department');
+       const catSelect = el('category');
+       const curDept = deptSelect.value;
+       const curCat = catSelect.value;
+       
+       if (!indName) {
+          renderOptions(deptSelect, config.departments, curDept);
+          renderOptions(catSelect, config.categories, curCat);
+          return;
+       }
+       
+       const entries = (config.indicators || []).filter(i => i.indicator === indName);
+       let allowedDepts = new Set();
+       let allowedCats = new Set();
+       let allDeptsAllowed = false;
+       let allCatsAllowed = false;
+       
+       if (entries.length === 0) {
+          allDeptsAllowed = true;
+          allCatsAllowed = true;
+       } else {
+           entries.forEach(e => {
+              if (!e.depts || e.depts.length === 0) allDeptsAllowed = true;
+              else e.depts.forEach(d => allowedDepts.add(d));
+              if (!e.cats || e.cats.length === 0) allCatsAllowed = true;
+              else e.cats.forEach(c => allowedCats.add(c));
+           });
+       }
+       
+       const finalDepts = allDeptsAllowed ? config.departments : Array.from(allowedDepts);
+       const finalCats = allCatsAllowed ? config.categories : Array.from(allowedCats);
+       
+       renderOptions(deptSelect, finalDepts, curDept);
+       renderOptions(catSelect, finalCats, curCat);
+    }
+
+    function renderOptions(selectEl, items, currentValue, isOptional = true) {
+       const safeItems = items || [];
+       const placeholder = isOptional ? '-- بدون تحديد (اختياري) --' : '-- اختر --';
+       selectEl.innerHTML = `<option value="">${placeholder}</option>` + safeItems.map(x => `<option value="${x}">${x}</option>`).join('');
+       if (currentValue && safeItems.includes(currentValue)) {
+           selectEl.value = currentValue;
+       } else {
+           selectEl.value = "";
+       }
+    }
+
+    function loadQuestions() {
+       const indName = el('indicator').value;
+       // We ignore category and department for filtering questions as per request
+       if(!indName) { hide('questions-area'); return; }
+       
+       // Filter questions by Indicator ONLY
+       const qs = (config.indicators || []).filter(i => {
+          return i.indicator === indName;
+       });
+
+       const list = el('q-list');
+       list.innerHTML = '';
+       
+       if(qs.length === 0) {
+          list.innerHTML = '<div class="text-center text-gray-400 p-4">لا توجد أسئلة مسجلة لهذا المؤشر</div>';
+          show('questions-area');
+          return;
+       }
+
+       qs.forEach((q, idx) => {
+          const div = document.createElement('div');
+          div.className = "bg-gray-50 border p-3 rounded flex flex-col sm:flex-row justify-between items-center gap-2";
+          div.innerHTML = `
+             <div class="w-full sm:w-2/3">
+               ${q.procedure ? `<div class="text-xs font-semibold text-indigo-700 mb-1 inline-flex items-center gap-1 bg-indigo-50 px-2 py-0.5 rounded border border-indigo-100"><i class="fas fa-clipboard-check text-[10px]"></i> الإجراء: ${q.procedure}</div>` : ''}
+               <div class="text-sm font-bold text-gray-800">${q.question}</div>
+             </div>
+             <div class="flex gap-2 text-xs flex-shrink-0">
+               <label class="flex items-center cursor-pointer bg-white px-2 py-1 rounded border border-gray-200 hover:border-green-400"><input type="radio" name="q_${idx}" value="Yes" class="ml-1 accent-green-600" onchange="calcScore()"> نعم</label>
+               <label class="flex items-center cursor-pointer bg-white px-2 py-1 rounded border border-gray-200 hover:border-red-400"><input type="radio" name="q_${idx}" value="No" class="ml-1 accent-red-600" onchange="calcScore()"> لا</label>
+               <label class="flex items-center cursor-pointer bg-white px-2 py-1 rounded border border-gray-200 hover:border-gray-400"><input type="radio" name="q_${idx}" value="NA" class="ml-1 accent-gray-600" onchange="calcScore()"> غير منطبق</label>
+               <input type="hidden" id="note_${idx}" value="${q.note || ''}">
+             </div>
+          `;
+          list.appendChild(div);
+       });
+       
+       show('questions-area');
+       calcScore();
+    }
+
+    function calcScore() {
+       const allInputs = document.querySelectorAll('#q-list input[type="radio"]:checked');
+       const qDivs = document.querySelectorAll('#q-list > div');
+       const totalQuestions = qDivs.length;
+       
+       let yesCount = 0;
+       let validTotal = 0;
+       
+       allInputs.forEach(inp => {
+          if (inp.value !== 'NA') {
+             validTotal++;
+             if (inp.value === 'Yes') yesCount++;
+          }
+       });
+
+       const liveScoreEl = el('live-score');
+       const badgeEl = el('live-status-badge');
+       const breakdownEl = el('live-items-breakdown');
+       const prevAvgEl = el('prev-avg-score');
+       const prevSubEl = el('prev-avg-subtitle');
+       const overallAvgEl = el('overall-projected-avg');
+       const overallSubEl = el('overall-avg-subtitle');
+
+       const prevCount = currentSession ? (currentSession.currentCount || 0) : 0;
+       const prevAvg = (currentSession && currentSession.previousAverage !== null && currentSession.previousAverage !== undefined) ? currentSession.previousAverage : null;
+       const prevSum = currentSession ? (currentSession.previousScoresSum || (prevAvg !== null ? prevAvg * prevCount : 0)) : 0;
+       const prevYes = currentSession ? (currentSession.previousYesCount || 0) : 0;
+       const prevValid = currentSession ? (currentSession.previousTotalCount || 0) : 0;
+
+       if (prevAvg !== null && prevCount > 0) {
+          if (prevAvgEl) prevAvgEl.innerText = prevAvg + '%';
+          if (prevSubEl) prevSubEl.innerText = `من ${prevCount} جلسة/جلسات محفوظة`;
+       } else {
+          if (prevAvgEl) prevAvgEl.innerText = '-';
+          if (prevSubEl) prevSubEl.innerText = 'أول جلسة هذا الشهر';
+       }
+
+       if (validTotal === 0) {
+           if (liveScoreEl) {
+              liveScoreEl.innerText = '0%';
+              liveScoreEl.className = "text-3xl font-black text-gray-400";
+           }
+           if (badgeEl) {
+              badgeEl.innerText = 'غير مكتمل';
+              badgeEl.className = "px-2.5 py-0.5 rounded-full text-xs font-bold bg-gray-200 text-gray-700";
+           }
+           if (breakdownEl) breakdownEl.innerText = `0 من ${totalQuestions} بنود مطابقة`;
+
+           if (prevValid > 0) {
+              const prevCompliance = Math.round((prevYes / prevValid) * 100);
+              if (overallAvgEl) overallAvgEl.innerText = prevCompliance + "%";
+              if (overallSubEl) overallSubEl.innerText = "نسبة الالتزام للجلسات السابقة";
+           } else if (prevAvg !== null && prevCount > 0) {
+              if (overallAvgEl) overallAvgEl.innerText = prevAvg + '%';
+              if (overallSubEl) overallSubEl.innerText = 'نسبة الالتزام للجلسات السابقة';
+           } else {
+              if (overallAvgEl) overallAvgEl.innerText = '0%';
+              if (overallSubEl) overallSubEl.innerText = 'بانتظار الإجابات';
+           }
+           return;
+       }
+       
+       const score = Math.round((yesCount / validTotal) * 100);
+       if (liveScoreEl) liveScoreEl.innerText = score + '%';
+       if (breakdownEl) breakdownEl.innerText = `${yesCount} من ${validTotal} بنود مطابقة`;
+
+       if (score >= 80) {
+           if (liveScoreEl) liveScoreEl.className = "text-3xl font-black text-green-600";
+           if (badgeEl) {
+              badgeEl.innerText = "مطابق";
+              badgeEl.className = "px-2.5 py-0.5 rounded-full text-xs font-bold bg-green-100 text-green-800 border border-green-300";
+           }
+       } else if (score >= 50) {
+           if (liveScoreEl) liveScoreEl.className = "text-3xl font-black text-orange-500";
+           if (badgeEl) {
+              badgeEl.innerText = "مطابق جزئياً";
+              badgeEl.className = "px-2.5 py-0.5 rounded-full text-xs font-bold bg-orange-100 text-orange-800 border border-orange-300";
+           }
+       } else {
+           if (liveScoreEl) liveScoreEl.className = "text-3xl font-black text-red-600";
+           if (badgeEl) {
+              badgeEl.innerText = "غير مطابق";
+              badgeEl.className = "px-2.5 py-0.5 rounded-full text-xs font-bold bg-red-100 text-red-800 border border-red-300";
+           }
+       }
+
+       const totalOverallYes = prevYes + yesCount;
+       const totalOverallValid = prevValid + validTotal;
+       const overallCompliance = totalOverallValid > 0 ? Math.round((totalOverallYes / totalOverallValid) * 100) : score;
+       const totalSessions = prevCount + 1;
+
+       if (overallAvgEl) overallAvgEl.innerText = overallCompliance + '%';
+       if (overallSubEl) {
+           overallSubEl.innerText = prevCount > 0 ? `نسبة الالتزام التراكمية (${totalSessions} جلسات)` : 'نسبة الالتزام للجلسة الحالية';
+       }
+    }
+
+    function submitForm() {
+       const date = el('date').value;
+       const inspector = el('inspector').value;
+       const department = el('department').value.trim();
+       const category = el('category').value.trim();
+       const indicator = el('indicator').value;
+
+       if(!date || !inspector || !indicator) {
+          alert('يرجى استكمال البيانات الأساسية (التاريخ، القائم بالتقييم، والمؤشر)'); return;
+       }
+       
+       if (!currentSession) {
+          alert('يرجى انتظار تحميل بيانات الجلسة...');
+          return;
+       }
+
+       const data = {
+          date: date, inspector: inspector,
+          department: department, category: category,
+          indicator: indicator, sessionNum: currentSession.nextSession,
+          targetName: el('target_name').value.trim(),
+          targetJobId: el('target_job_id').value.trim(),
+          answers: []
+       };
+
+       const qDivs = document.querySelectorAll('#q-list > div');
+       let valid = true;
+       qDivs.forEach((div, idx) => {
+          const qText = div.querySelector('.font-bold').innerText;
+          const checked = div.querySelector(`input[name="q_${idx}"]:checked`);
+          if(!checked) valid = false;
+          else {
+             const ans = checked.value;
+             const note = ans === 'No' ? document.getElementById(`note_${idx}`).value : '';
+             data.answers.push({question: qText, answer: ans, note: note});
+          }
+       });
+
+       if(!valid) { alert('يرجى الإجابة على جميع الأسئلة'); return; }
+
+       loading(true);
+       google.script.run.withSuccessHandler(() => {
+          loading(false);
+          alert('تم الحفظ بنجاح');
+          initEntry();
+          // Reset selections partially
+          el('department').value = ''; el('category').value = ''; el('indicator').value = ''; 
+          updateEntryDropdowns();
+       }).withFailureHandler(err => {
+          loading(false); alert('خطأ: ' + err);
+       }).submitKpiForm(data);
+    }
+
+    // --- Reports State & Management ---
+    let rawReportsList = [];
+    let currentEditRecords = [];
+    let currentEditingIndicator = '';
+    let currentEditingMonth = '';
+
+    function getReport() {
+       loadReportsList();
+    }
+
+    function showAllMonthsReports() {
+       el('rep-month').value = '';
+       loadReportsList('all');
+    }
+
+    function loadReportsList(overrideMonth) {
+       const m = overrideMonth !== undefined ? overrideMonth : (el('rep-month').value || 'all');
+       loading(true);
+       el('reports-table-count').innerText = 'جاري التحميل...';
+
+       google.script.run.withSuccessHandler(data => {
+          loading(false);
+          rawReportsList = data || [];
+          filterReportsTable();
+       }).withFailureHandler(err => {
+          loading(false);
+          alert("خطأ أثناء جلب قائمة التقارير: " + err);
+          el('reports-table-count').innerText = 'حدث خطأ أثناء التحميل';
+       }).fetchReportsSummary(m);
+    }
+
+    function filterReportsTable() {
+       const search = (el('rep-search').value || '').trim().toLowerCase();
+       const filtered = rawReportsList.filter(item => {
+          if (!search) return true;
+          return (item.indicator || '').toLowerCase().includes(search) || (item.month || '').includes(search);
+       });
+       renderReportsTable(filtered);
+    }
+
+    function renderReportsTable(items) {
+       const tbody = el('reports-table-body');
+       tbody.innerHTML = '';
+
+       el('reports-table-count').innerText = `عدد التقارير: ${items.length}`;
+
+       const selectAllCheckbox = el('select-all-checkbox');
+       if (selectAllCheckbox) selectAllCheckbox.checked = false;
+
+       if (items.length === 0) {
+          tbody.innerHTML = `<tr><td colspan="6" class="p-8 text-center text-gray-400 font-medium">لا توجد تقارير مسجلة للفترة المحددة</td></tr>`;
+          updateSelectedReportsCount();
+          return;
+       }
+
+       items.forEach((r, idx) => {
+          const tr = document.createElement('tr');
+          tr.className = 'border-b hover:bg-slate-50/80 transition';
+
+          const pct = r.score !== undefined ? r.score : 0;
+          let badgeColor = 'bg-red-100 text-red-800 border-red-200';
+          if (pct >= 80) badgeColor = 'bg-green-100 text-green-800 border-green-200';
+          else if (pct >= 50) badgeColor = 'bg-amber-100 text-amber-800 border-amber-200';
+
+          const escInd = (r.indicator || '').replace(/'/g, "\\'");
+          const escMonth = (r.month || '').replace(/'/g, "\\'");
+
+          tr.innerHTML = `
+             <td class="p-3 border-l text-center">
+                <input type="checkbox" class="report-checkbox w-4 h-4 accent-indigo-600 cursor-pointer" data-month="${r.month}" data-indicator="${r.indicator}" onchange="updateSelectedReportsCount()">
+             </td>
+             <td class="p-3 border-l font-semibold text-gray-700 text-xs">${r.month}</td>
+             <td class="p-3 border-l font-bold text-indigo-950">
+                <div class="flex items-center gap-1.5">
+                   <i class="fas fa-chart-pie text-indigo-500 text-xs"></i>
+                   <span>${r.indicator}</span>
+                </div>
+             </td>
+             <td class="p-3 border-l text-center">
+                <span class="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-black border ${badgeColor} shadow-2xs">
+                   ${pct}%
+                </span>
+                <span class="block text-[10px] text-gray-400 mt-0.5">${r.totalYes || 0} من ${r.totalValid || 0}</span>
+             </td>
+             <td class="p-3 border-l text-center text-xs text-gray-600">
+                <span class="bg-gray-100 text-gray-700 px-2 py-0.5 rounded text-[11px] font-semibold">${r.sessionsCount || 1} جلسات</span>
+             </td>
+             <td class="p-3 text-center">
+                <div class="flex items-center justify-center gap-1.5 flex-wrap">
+                   <button type="button" onclick="viewSingleReport('${escMonth}', '${escInd}')" class="bg-indigo-50 hover:bg-indigo-100 text-indigo-700 border border-indigo-200 px-2.5 py-1 rounded text-xs font-semibold flex items-center gap-1 transition" title="فتح ومعاينة تقرير المؤشر">
+                      <i class="fas fa-eye text-[11px]"></i> فتح
+                   </button>
+                   <button type="button" onclick="exportSingleReportToExcel('${escMonth}', '${escInd}')" class="bg-emerald-50 hover:bg-emerald-100 text-emerald-800 border border-emerald-300 px-2.5 py-1 rounded text-xs font-semibold flex items-center gap-1 transition" title="حفظ هذا المؤشر في شيت إكسيل">
+                      <i class="fas fa-file-excel text-[11px] text-emerald-600"></i> إكسيل
+                   </button>
+                   <button type="button" onclick="openEditReportModal('${escMonth}', '${escInd}')" class="bg-amber-50 hover:bg-amber-100 text-amber-800 border border-amber-200 px-2.5 py-1 rounded text-xs font-semibold flex items-center gap-1 transition" title="تعديل تقييمات وجلسات هذا المؤشر">
+                      <i class="fas fa-edit text-[11px]"></i> تعديل
+                   </button>
+                   <button type="button" onclick="openDuplicateReportModal('${escMonth}', '${escInd}')" class="bg-teal-50 hover:bg-teal-100 text-teal-800 border border-teal-200 px-2.5 py-1 rounded text-xs font-semibold flex items-center gap-1 transition" title="نسخ هذا المؤشر والتعديل على الشهر والإحصائية">
+                      <i class="fas fa-copy text-[11px]"></i> نسخ
+                   </button>
+                   <button type="button" onclick="printSingleReport('${escMonth}', '${escInd}')" class="bg-slate-100 hover:bg-slate-200 text-slate-800 border border-slate-300 px-2.5 py-1 rounded text-xs font-semibold flex items-center gap-1 transition" title="طباعة هذا التقرير">
+                      <i class="fas fa-print text-[11px]"></i> طباعة
+                   </button>
+                   <button type="button" onclick="deleteSingleReport('${escMonth}', '${escInd}')" class="bg-red-50 hover:bg-red-100 text-red-700 border border-red-200 px-2 py-1 rounded text-xs font-semibold flex items-center gap-1 transition" title="حذف هذا التقرير">
+                      <i class="fas fa-trash-alt text-[11px]"></i> حذف
+                   </button>
+                </div>
+             </td>
+          `;
+          tbody.appendChild(tr);
+       });
+
+       updateSelectedReportsCount();
+    }
+
+    function toggleSelectAllReports(forceState) {
+       const selectAllCheckbox = el('select-all-checkbox');
+       const checkboxes = document.querySelectorAll('.report-checkbox');
+       const newState = forceState !== undefined ? forceState : (checkboxes.length > 0 && !checkboxes[0].checked);
+       
+       if (selectAllCheckbox) selectAllCheckbox.checked = newState;
+       checkboxes.forEach(cb => { cb.checked = newState; });
+       updateSelectedReportsCount();
+    }
+
+    function updateSelectedReportsCount() {
+       const checkedBoxes = document.querySelectorAll('.report-checkbox:checked');
+       const count = checkedBoxes.length;
+       const countEl = el('selected-reports-count');
+       if (countEl) countEl.innerText = count;
+
+       const excelCountEl = el('excel-export-count');
+       if (excelCountEl) {
+          excelCountEl.innerText = count > 0 ? `${count} محدد` : 'الكل';
+       }
+
+       const btn = el('btn-print-selected');
+       if (btn) {
+          if (count > 0) {
+             btn.disabled = false;
+             btn.classList.remove('opacity-50', 'cursor-not-allowed');
+          } else {
+             btn.disabled = true;
+             btn.classList.add('opacity-50', 'cursor-not-allowed');
+          }
+       }
+    }
+
+    function getSelectedReportsList() {
+       const checkedBoxes = document.querySelectorAll('.report-checkbox:checked');
+       const items = [];
+       checkedBoxes.forEach(cb => {
+          items.push({
+             month: cb.getAttribute('data-month'),
+             indicator: cb.getAttribute('data-indicator')
+          });
+       });
+       return items;
+    }
+
+    let currentPreviewData = null;
+    let currentPreviewTitle = '';
+
+    // 1. View Single Report
+    function viewSingleReport(month, indicator) {
+       loading(true);
+       google.script.run.withSuccessHandler(data => {
+          loading(false);
+          currentPreviewData = data || [];
+          currentPreviewTitle = `تقرير مؤشر: ${indicator} (شهر: ${month})`;
+          renderReport(data, currentPreviewTitle);
+          el('rep-preview-label').innerText = currentPreviewTitle;
+          const content = el('rep-content');
+          content.scrollIntoView({ behavior: 'smooth', block: 'start' });
+       }).withFailureHandler(err => {
+          loading(false);
+          alert('خطأ أثناء تحميل التقرير: ' + err);
+       }).fetchKpiReport(month, indicator);
+    }
+
+    // 2. Print Single Report
+    function printSingleReport(month, indicator) {
+       loading(true);
+       google.script.run.withSuccessHandler(data => {
+          loading(false);
+          currentPreviewData = data || [];
+          currentPreviewTitle = `تقرير مؤشر: ${indicator} (شهر: ${month})`;
+          renderReport(data, currentPreviewTitle);
+          setTimeout(() => {
+             window.print();
+          }, 250);
+       }).withFailureHandler(err => {
+          loading(false);
+          alert('خطأ أثناء تجهيز الطباعة: ' + err);
+       }).fetchKpiReport(month, indicator);
+    }
+
+    // 3. Print Multiple Selected Reports
+    function printSelectedReports() {
+       const selected = getSelectedReportsList();
+       if (selected.length === 0) {
+          alert('يرجى تحديد تقرير واحد على الأقل للطباعة');
+          return;
+       }
+
+       loading(true);
+       google.script.run.withSuccessHandler(data => {
+          loading(false);
+          currentPreviewData = data || [];
+          
+          const uniqueMonths = [...new Set(selected.map(s => s.month))];
+          let titleStr = '';
+          if (uniqueMonths.length === 1) {
+             titleStr = `تقرير مؤشرات الأداء المحددة (${selected.length} مؤشر) - شهر ${uniqueMonths[0]}`;
+          } else {
+             titleStr = `تقرير مؤشرات الأداء المحددة (${selected.length} مؤشر)`;
+          }
+
+          currentPreviewTitle = titleStr;
+          renderReport(data, titleStr);
+          el('rep-preview-label').innerText = titleStr;
+
+          setTimeout(() => {
+             window.print();
+          }, 300);
+       }).withFailureHandler(err => {
+          loading(false);
+          alert('خطأ أثناء جلب التقارير المحددة: ' + err);
+       }).fetchSelectedReports(selected);
+    }
+
+    // --- Excel Export Functionality ---
+    function downloadCsvFallback(headers, rows, filename) {
+       let csvContent = '\uFEFF' + headers.map(h => `"${String(h).replace(/"/g, '""')}"`).join(',') + '\n';
+       rows.forEach(r => {
+          csvContent += r.map(c => `"${String(c === undefined || c === null ? '' : c).replace(/"/g, '""')}"`).join(',') + '\n';
+       });
+       const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+       const url = URL.createObjectURL(blob);
+       const a = document.createElement('a');
+       a.href = url;
+       a.download = filename.endsWith('.csv') ? filename : `${filename}.csv`;
+       document.body.appendChild(a);
+       a.click();
+       document.body.removeChild(a);
+       URL.revokeObjectURL(url);
+    }
+
+    function buildAndDownloadExcelFromRecords(records, filenamePrefix) {
+       if (!records || records.length === 0) {
+          alert('لا توجد بيانات أو نتائج مسجلة للتصدير حالياً.');
+          return;
+       }
+       const hospitalName = (config && config.hospital_name) ? config.hospital_name : 'مستشفى المنيا الجامعي للعيون';
+
+       // 1. Group by (month + indicator)
+       const groupMap = {};
+       const allIndsSet = new Set();
+       const allMonthsSet = new Set();
+
+       records.forEach(r => {
+          const mon = String(r.month || '').trim();
+          const ind = String(r.indicator || 'غير محدد').trim();
+          if (!mon || !ind) return;
+          allIndsSet.add(ind);
+          allMonthsSet.add(mon);
+
+          const key = `${mon}___${ind}`;
+          if (!groupMap[key]) {
+             groupMap[key] = {
+                month: mon,
+                indicator: ind,
+                totalYes: 0,
+                totalNo: 0,
+                totalNA: 0,
+                totalValid: 0,
+                totalRecords: 0,
+                sessions: new Set(),
+                procedures: new Set()
+             };
+          }
+          groupMap[key].totalRecords++;
+          if (r.sessionNumber !== null && r.sessionNumber !== undefined) {
+             groupMap[key].sessions.add(Number(r.sessionNumber));
+          }
+          const p = (r.procedure || getProcedureForQuestion(r.question, ind) || 'عام').trim();
+          if (p) groupMap[key].procedures.add(p);
+
+          const ans = String(r.answer || '').trim();
+          if (ans === 'Yes') {
+             groupMap[key].totalYes++;
+             groupMap[key].totalValid++;
+          } else if (ans === 'No') {
+             groupMap[key].totalNo++;
+             groupMap[key].totalValid++;
+          } else {
+             groupMap[key].totalNA++;
+          }
+       });
+
+       // 1. Build Summary List
+       const summaryRows = Object.values(groupMap).map((g, idx) => {
+          const score = g.totalValid > 0 ? Math.round((g.totalYes / g.totalValid) * 100) : 0;
+          let evalText = 'يحتاج تحسين';
+          if (score >= 80) evalText = 'ممتاز';
+          else if (score >= 50) evalText = 'متوسط';
+
+          return {
+             'م': idx + 1,
+             'الشهر': g.month,
+             'المؤشر': g.indicator,
+             'نسبة الامتثال': `${score}%`,
+             'مطابق (نعم)': g.totalYes,
+             'غير مطابق (لا)': g.totalNo,
+             'غير منطبق (NA)': g.totalNA,
+             'إجمالي التقييمات الصالحة': g.totalValid,
+             'عدد الجلسات': g.sessions.size || 1,
+             'عدد الإجراءات': g.procedures.size,
+             'التقييم العام': evalText,
+             'المنشأة': hospitalName
+          };
+       });
+
+       // 2. Build Matrix (Months x Indicators)
+       const sortedMonths = [...allMonthsSet].sort().reverse();
+       const sortedInds = [...allIndsSet].sort();
+
+       const matrixRows = sortedMonths.map((m, mIdx) => {
+          const rowObj = {
+             'م': mIdx + 1,
+             'الشهر': m
+          };
+          let sumPct = 0;
+          let countIndsWithScore = 0;
+
+          sortedInds.forEach(indName => {
+             const key = `${m}___${indName}`;
+             const g = groupMap[key];
+             if (g && g.totalValid > 0) {
+                const pct = Math.round((g.totalYes / g.totalValid) * 100);
+                rowObj[indName] = `${pct}%`;
+                sumPct += pct;
+                countIndsWithScore++;
+             } else {
+                rowObj[indName] = '---';
+             }
+          });
+
+          rowObj['متوسط المستشفى للشهر'] = countIndsWithScore > 0 ? `${Math.round(sumPct / countIndsWithScore)}%` : '---';
+          return rowObj;
+       });
+
+       // 3. Build Questions Evaluation Breakdown Rows (الإجراء | السؤال | النسبة)
+       const qAggMap = {};
+       records.forEach(r => {
+          const mon = String(r.month || '').trim();
+          const ind = String(r.indicator || '').trim();
+          const q = String(r.question || '').trim();
+          if (!mon || !ind || !q) return;
+          const p = (r.procedure || getProcedureForQuestion(q, ind) || 'عام').trim();
+          const qKey = `${mon}___${ind}___${q}`;
+          if (!qAggMap[qKey]) {
+             qAggMap[qKey] = {
+                month: mon,
+                indicator: ind,
+                procedure: p,
+                question: q,
+                yes: 0,
+                no: 0,
+                valid: 0
+             };
+          }
+          const ans = String(r.answer || '').trim();
+          if (ans === 'Yes') {
+             qAggMap[qKey].yes++;
+             qAggMap[qKey].valid++;
+          } else if (ans === 'No') {
+             qAggMap[qKey].no++;
+             qAggMap[qKey].valid++;
+          }
+       });
+
+       const questionsSummaryRows = Object.values(qAggMap).map((item, idx) => {
+          const pct = item.valid > 0 ? Math.round((item.yes / item.valid) * 100) : 0;
+          return {
+             'م': idx + 1,
+             'الشهر': item.month,
+             'المؤشر': item.indicator,
+             'الإجراء': item.procedure,
+             'السؤال': item.question,
+             'النسبة': `${pct}%`,
+             'المطابقة (نعم)': item.yes,
+             'إجمالي التقييمات': item.valid,
+             'التقييم': pct >= 80 ? 'ممتاز' : (pct >= 50 ? 'متوسط' : 'يحتاج تحسين')
+          };
+       });
+
+       // 4. Build Detailed Rows
+       const detailsData = records.map((r, idx) => {
+          const proc = r.procedure || getProcedureForQuestion(r.question, r.indicator) || 'عام';
+          const ansArabic = r.answer === 'Yes' ? 'نعم' : (r.answer === 'No' ? 'لا' : 'غير منطبق');
+          return {
+             'م': idx + 1,
+             'الشهر': r.month,
+             'التاريخ': r.date || '',
+             'المؤشر': r.indicator,
+             'الإجراء': proc,
+             'السؤال': r.question,
+             'الإجابة': ansArabic,
+             'ملاحظة الخطأ': r.note || '',
+             'القسم': r.department || '',
+             'الفئة': r.category || '',
+             'رقم الجلسة': r.sessionNumber || 1,
+             'القائم بالتقييم': r.inspector || '',
+             'المستهدف': r.targetName || ''
+          };
+       });
+
+       const filename = `${filenamePrefix || 'شيت_نتائج_المؤشرات'}_${new Date().toISOString().slice(0, 10)}.xlsx`;
+
+       if (window.XLSX && XLSX.utils) {
+          const wb = XLSX.utils.book_new();
+          wb.Workbook = { Views: [{ RTL: true }] };
+
+          // Sheet 1: Summary
+          const wsSummary = XLSX.utils.json_to_sheet(summaryRows);
+          wsSummary['!views'] = [{ rightToLeft: true }];
+          wsSummary['!cols'] = [
+             { wch: 6 }, { wch: 12 }, { wch: 28 }, { wch: 16 }, { wch: 15 },
+             { wch: 15 }, { wch: 15 }, { wch: 22 }, { wch: 14 }, { wch: 14 },
+             { wch: 16 }, { wch: 30 }
+          ];
+          XLSX.utils.book_append_sheet(wb, wsSummary, 'ملخص الشهور والمؤشرات');
+
+          // Sheet 2: Matrix
+          if (matrixRows.length > 0) {
+             const wsMatrix = XLSX.utils.json_to_sheet(matrixRows);
+             wsMatrix['!views'] = [{ rightToLeft: true }];
+             const mCols = [{ wch: 6 }, { wch: 14 }];
+             sortedInds.forEach(() => mCols.push({ wch: 24 }));
+             mCols.push({ wch: 24 });
+             wsMatrix['!cols'] = mCols;
+             XLSX.utils.book_append_sheet(wb, wsMatrix, 'مصفوفة الشهور والمؤشرات');
+          }
+
+          // Sheet 3: Questions Evaluation Table (الإجراء | السؤال | النسبة)
+          if (questionsSummaryRows.length > 0) {
+             const wsQuestions = XLSX.utils.json_to_sheet(questionsSummaryRows);
+             wsQuestions['!views'] = [{ rightToLeft: true }];
+             wsQuestions['!cols'] = [
+                { wch: 6 }, { wch: 12 }, { wch: 24 }, { wch: 24 }, { wch: 42 },
+                { wch: 12 }, { wch: 16 }, { wch: 16 }, { wch: 16 }
+             ];
+             XLSX.utils.book_append_sheet(wb, wsQuestions, 'نسب تقييم أسئلة المؤشرات');
+          }
+
+          // Sheet 4: Details
+          if (detailsData.length > 0) {
+             const wsDetails = XLSX.utils.json_to_sheet(detailsData);
+             wsDetails['!views'] = [{ rightToLeft: true }];
+             wsDetails['!cols'] = [
+                { wch: 6 }, { wch: 12 }, { wch: 14 }, { wch: 24 }, { wch: 24 },
+                { wch: 40 }, { wch: 12 }, { wch: 26 }, { wch: 18 }, { wch: 16 },
+                { wch: 12 }, { wch: 18 }, { wch: 18 }
+             ];
+             XLSX.utils.book_append_sheet(wb, wsDetails, 'تفاصيل الإجراءات والتقييمات');
+          }
+
+          XLSX.writeFile(wb, filename);
+       } else {
+          const headers = ['م', 'الشهر', 'المؤشر', 'نسبة الامتثال', 'مطابق', 'غير مطابق', 'إجمالي التقييمات', 'عدد الجلسات', 'التقييم العام', 'المنشأة'];
+          const rows = summaryRows.map(s => Object.values(s));
+          downloadCsvFallback(headers, rows, filename.replace('.xlsx', '.csv'));
+       }
+    }
+
+    function exportAllResultsToExcel() {
+       loading(true);
+       google.script.run
+          .withSuccessHandler(records => {
+             loading(false);
+             if (!records || records.length === 0) {
+                alert('لا توجد نتائج مسجلة لتصديرها إلى شيت إكسيل حتى الآن.');
+                return;
+             }
+             buildAndDownloadExcelFromRecords(records, 'شيت_نتائج_مؤشرات_الأداء_كافة_الشهور');
+          })
+          .withFailureHandler(err => {
+             loading(false);
+             alert('خطأ أثناء جلب بيانات النتائج للإكسيل: ' + err);
+          })
+          .fetchAllResultsForExcel();
+    }
+
+    function exportCurrentMonthEntryExcel() {
+       const dateVal = (el('date') && el('date').value) ? el('date').value : '';
+       const m = dateVal ? dateVal.slice(0, 7) : new Date().toISOString().slice(0, 7);
+       loading(true);
+       google.script.run
+          .withSuccessHandler(records => {
+             loading(false);
+             if (!records || records.length === 0) {
+                alert(`لا توجد نتائج مسجلة لشهر ${m} حتى الآن.`);
+                return;
+             }
+             const monthRecords = records.filter(r => (r.month === m) || !m);
+             const exportData = monthRecords.length > 0 ? monthRecords : records;
+             buildAndDownloadExcelFromRecords(exportData, `شيت_نتائج_المؤشرات_شهر_${m}`);
+          })
+          .withFailureHandler(err => {
+             loading(false);
+             alert('خطأ أثناء تصدير شيت النتائج: ' + err);
+          })
+          .fetchAllResultsForExcel();
+    }
+
+    function exportReportsToExcel() {
+       const selected = getSelectedReportsList();
+       let itemsToExport = [];
+
+       if (selected.length > 0) {
+          itemsToExport = selected;
+       } else if (rawReportsList && rawReportsList.length > 0) {
+          itemsToExport = rawReportsList.map(r => ({ month: r.month, indicator: r.indicator }));
+       }
+
+       if (itemsToExport.length === 0) {
+          exportAllResultsToExcel();
+          return;
+       }
+
+       loading(true);
+       google.script.run
+          .withSuccessHandler(detailedRecords => {
+             loading(false);
+             const uniqueMonths = [...new Set(itemsToExport.map(i => i.month))];
+             const monthTag = uniqueMonths.length === 1 ? `_شهر_${uniqueMonths[0]}` : '';
+             buildAndDownloadExcelFromRecords(detailedRecords, `تقرير_مؤشرات_الأداء${monthTag}`);
+          })
+          .withFailureHandler(err => {
+             loading(false);
+             alert('خطأ أثناء جلب بيانات التصدير: ' + err);
+          })
+          .fetchSelectedReports(itemsToExport);
+    }
+
+    function exportSingleReportToExcel(month, indicator) {
+       loading(true);
+       const hospitalName = (config && config.hospital_name) ? config.hospital_name : 'مستشفى المنيا الجامعي للعيون';
+
+       google.script.run
+          .withSuccessHandler(data => {
+             loading(false);
+             const rows = data || [];
+             if (rows.length === 0) {
+                alert('لا توجد بيانات مسجلة لهذا المؤشر في هذا الشهر.');
+                return;
+             }
+
+             // Compute stats
+             const validRows = rows.filter(r => r.answer !== 'NA');
+             const yesCount = validRows.filter(r => r.answer === 'Yes').length;
+             const totalValid = validRows.length;
+             const score = totalValid > 0 ? Math.round((yesCount / totalValid) * 100) : 0;
+
+             // Procedures stats
+             const procStats = {};
+             validRows.forEach(r => {
+                const p = (r.procedure || getProcedureForQuestion(r.question, indicator) || 'عام').trim();
+                if (!procStats[p]) procStats[p] = { total: 0, yes: 0 };
+                procStats[p].total++;
+                if (r.answer === 'Yes') procStats[p].yes++;
+             });
+
+             // Questions Breakdown stats (الإجراء | السؤال | النسبة)
+             const questionStats = {};
+             validRows.forEach(r => {
+                const q = String(r.question || '').trim();
+                if (!q) return;
+                const p = (r.procedure || getProcedureForQuestion(q, indicator) || 'عام').trim();
+                if (!questionStats[q]) {
+                   questionStats[q] = { procedure: p, question: q, yes: 0, no: 0, valid: 0 };
+                }
+                if (r.answer === 'Yes') { questionStats[q].yes++; questionStats[q].valid++; }
+                else if (r.answer === 'No') { questionStats[q].no++; questionStats[q].valid++; }
+             });
+
+             const questionsExcelRows = Object.values(questionStats).sort((a, b) => a.procedure.localeCompare(b.procedure, 'ar')).map((q, idx) => {
+                const pct = q.valid > 0 ? Math.round((q.yes / q.valid) * 100) : 0;
+                return {
+                   'م': idx + 1,
+                   'الإجراء': q.procedure,
+                   'السؤال': q.question,
+                   'النسبة': `${pct}%`,
+                   'المطابقة (نعم)': q.yes,
+                   'إجمالي التقييمات': q.valid,
+                   'التقييم': pct >= 80 ? 'ممتاز' : (pct >= 50 ? 'متوسط' : 'يحتاج تحسين')
+                };
+             });
+
+             const summaryRows = [
+                {
+                   'الشهر': month,
+                   'المؤشر': indicator,
+                   'نسبة الامتثال العامة': `${score}%`,
+                   'المطابقات (نعم)': yesCount,
+                   'إجمالي التقييمات الصالحة': totalValid,
+                   'إجمالي بنود التقييم': rows.length,
+                   'المنشأة': hospitalName
+                }
+             ];
+
+             const procRows = Object.keys(procStats).map((p, idx) => {
+                const s = procStats[p];
+                const pct = s.total > 0 ? Math.round((s.yes / s.total) * 100) : 0;
+                return {
+                   'م': idx + 1,
+                   'الإجراء': p,
+                   'المطابقة': `${s.yes} من ${s.total}`,
+                   'نسبة الالتزام': `${pct}%`,
+                   'التقييم': pct >= 80 ? 'ممتاز' : (pct >= 50 ? 'متوسط' : 'يحتاج تحسين')
+                };
+             });
+
+             const detailsRows = rows.map((r, idx) => {
+                const proc = r.procedure || getProcedureForQuestion(r.question, indicator) || 'عام';
+                const ansArabic = r.answer === 'Yes' ? 'نعم' : (r.answer === 'No' ? 'لا' : 'غير منطبق');
+                return {
+                   'م': idx + 1,
+                   'الشهر': month,
+                   'التاريخ': r.date || '',
+                   'الإجراء': proc,
+                   'السؤال': r.question,
+                   'الإجابة': ansArabic,
+                   'ملاحظة الخطأ': r.note || '',
+                   'القسم': r.department || '',
+                   'الفئة': r.category || '',
+                   'رقم الجلسة': r.sessionNumber || 1
+                };
+             });
+
+             const filename = `تقرير_${indicator}_شهر_${month}.xlsx`;
+
+             if (window.XLSX && XLSX.utils) {
+                const wb = XLSX.utils.book_new();
+                wb.Workbook = { Views: [{ RTL: true }] };
+
+                // Sheet 1: Summary & Procedures
+                const wsSumm = XLSX.utils.json_to_sheet(summaryRows);
+                wsSumm['!views'] = [{ rightToLeft: true }];
+                wsSumm['!cols'] = [{ wch: 12 }, { wch: 28 }, { wch: 20 }, { wch: 18 }, { wch: 22 }, { wch: 20 }, { wch: 32 }];
+                XLSX.utils.book_append_sheet(wb, wsSumm, 'ملخص المؤشر');
+
+                // Sheet 2: Questions Evaluation Table (الإجراء | السؤال | النسبة)
+                if (questionsExcelRows.length > 0) {
+                   const wsQ = XLSX.utils.json_to_sheet(questionsExcelRows);
+                   wsQ['!views'] = [{ rightToLeft: true }];
+                   wsQ['!cols'] = [
+                      { wch: 6 }, { wch: 24 }, { wch: 42 }, { wch: 12 }, { wch: 16 }, { wch: 16 }, { wch: 16 }
+                   ];
+                   XLSX.utils.book_append_sheet(wb, wsQ, 'جدول الأسئلة والإجراءات');
+                }
+
+                if (procRows.length > 0) {
+                   const wsProc = XLSX.utils.json_to_sheet(procRows);
+                   wsProc['!views'] = [{ rightToLeft: true }];
+                   wsProc['!cols'] = [{ wch: 6 }, { wch: 26 }, { wch: 18 }, { wch: 16 }, { wch: 16 }];
+                   XLSX.utils.book_append_sheet(wb, wsProc, 'نتائج الإجراءات');
+                }
+
+                // Sheet 3: Details
+                const wsDet = XLSX.utils.json_to_sheet(detailsRows);
+                wsDet['!views'] = [{ rightToLeft: true }];
+                wsDet['!cols'] = [
+                   { wch: 6 }, { wch: 12 }, { wch: 14 }, { wch: 24 }, { wch: 38 },
+                   { wch: 12 }, { wch: 26 }, { wch: 18 }, { wch: 16 }, { wch: 12 }
+                ];
+                XLSX.utils.book_append_sheet(wb, wsDet, 'سجلات التقييم');
+
+                XLSX.writeFile(wb, filename);
+             } else {
+                const headers = ['م', 'الشهر', 'التاريخ', 'الإجراء', 'السؤال', 'الإجابة', 'ملاحظة الخطأ', 'القسم', 'الفئة', 'رقم الجلسة'];
+                const csvData = detailsRows.map(d => Object.values(d));
+                downloadCsvFallback(headers, csvData, filename.replace('.xlsx', '.csv'));
+             }
+          })
+          .withFailureHandler(err => {
+             loading(false);
+             alert('خطأ أثناء جلب بيانات التقرير: ' + err);
+          })
+          .fetchKpiReport(month, indicator);
+    }
+
+    function exportCurrentPreviewToExcel() {
+       if (!currentPreviewData || currentPreviewData.length === 0) {
+          alert('يرجى فتح أو معاينة تقرير أولاً لتصديره إلى إكسيل.');
+          return;
+       }
+
+       // Identify unique months and indicators in currentPreviewData
+       const uniquePairs = [];
+       const seen = new Set();
+       currentPreviewData.forEach(r => {
+          const m = r.month || '';
+          const ind = r.indicator || '';
+          const key = `${m}___${ind}`;
+          if (!seen.has(key)) {
+             seen.add(key);
+             uniquePairs.push({ month: m, indicator: ind });
+          }
+       });
+
+       if (uniquePairs.length === 1) {
+          exportSingleReportToExcel(uniquePairs[0].month, uniquePairs[0].indicator);
+       } else {
+          exportReportsToExcel();
+       }
+    }
+
+    // 4. Delete Single Report
+    function deleteSingleReport(month, indicator) {
+       const msg = `هل أنت متأكد من حذف تقرير مؤشر "${indicator}" لشهر "${month}"؟\n\nسيتم حذف جميع سجلات التقييم التابعة له نهائياً ولا يمكن التراجع عن هذا الإجراء.`;
+       if (!confirm(msg)) return;
+
+       loading(true);
+       google.script.run.withSuccessHandler(res => {
+          loading(false);
+          alert('تم حذف التقرير بنجاح');
+          loadReportsList();
+          hideReportPreview();
+       }).withFailureHandler(err => {
+          loading(false);
+          alert('خطأ أثناء حذف التقرير: ' + err);
+       }).deleteKpiReport(month, indicator);
+    }
+
+    function hideReportPreview() {
+       hide('rep-content');
+       window.scrollTo({ top: 0, behavior: 'smooth' });
+    }
+
+    // 5. Edit Report Modal Logic
+    function openEditReportModal(month, indicator) {
+       currentEditingMonth = month;
+       currentEditingIndicator = indicator;
+       loading(true);
+
+       google.script.run.withSuccessHandler(data => {
+          loading(false);
+          currentEditRecords = data || [];
+          renderEditReportModal();
+       }).withFailureHandler(err => {
+          loading(false);
+          alert('خطأ أثناء جلب بيانات التعديل: ' + err);
+       }).fetchIndicatorRecordsForEdit(month, indicator);
+    }
+
+    function renderEditReportModal() {
+       el('edit-modal-title').innerText = `تعديل تقرير: ${currentEditingIndicator}`;
+       el('edit-modal-subtitle').innerText = `شهر: ${currentEditingMonth} | عدد السجلات: ${currentEditRecords.length}`;
+
+       const tbody = el('edit-modal-records-body');
+       tbody.innerHTML = '';
+
+       if (currentEditRecords.length === 0) {
+          tbody.innerHTML = `<tr><td colspan="5" class="p-6 text-center text-gray-400 font-medium">لا توجد سجلات قابلة للتعديل</td></tr>`;
+          updateModalLiveScore();
+          show('edit-report-modal');
+          return;
+       }
+
+       currentEditRecords.forEach((r, idx) => {
+          const tr = document.createElement('tr');
+          tr.className = 'hover:bg-slate-50 transition border-b';
+
+          const curAns = r.answer || 'Yes';
+          const curNote = r.note || '';
+          const deptCatStr = [r.department, r.category].filter(Boolean).join(' - ') || 'عام';
+          const sessionLabel = r.sessionNumber ? `جلسة ${r.sessionNumber}` : '';
+
+          const pName = r.procedure || getProcedureForQuestion(r.question, currentEditingIndicator) || 'عام';
+          tr.innerHTML = `
+             <td class="p-2.5 border-l text-center text-xs text-gray-500 font-mono">${idx + 1}</td>
+             <td class="p-2.5 border-l">
+                <div class="inline-flex items-center gap-1 text-[10px] font-bold text-indigo-700 bg-indigo-50 px-2 py-0.5 rounded border border-indigo-100 mb-1">
+                   <i class="fas fa-stethoscope text-[9px]"></i> الإجراء: ${pName}
+                </div>
+                <div class="text-xs font-bold text-gray-800 leading-relaxed">${r.question}</div>
+                ${sessionLabel ? `<div class="text-[10px] text-gray-400 mt-0.5">${sessionLabel} | ${r.date || ''}</div>` : ''}
+             </td>
+             <td class="p-2.5 border-l text-xs text-indigo-900 font-semibold bg-indigo-50/40">
+                ${deptCatStr}
+             </td>
+             <td class="p-2.5 border-l text-center">
+                <div class="inline-flex gap-1 bg-white p-1 rounded-md border border-gray-200 shadow-2xs text-xs">
+                   <label class="flex items-center px-2 py-0.5 rounded cursor-pointer hover:bg-green-50">
+                      <input type="radio" name="edit_ans_${idx}" value="Yes" ${curAns === 'Yes' ? 'checked' : ''} class="accent-green-600 ml-1" onchange="onModalAnswerChange(${idx}, 'Yes')">
+                      <span class="font-bold text-green-700">نعم</span>
+                   </label>
+                   <label class="flex items-center px-2 py-0.5 rounded cursor-pointer hover:bg-red-50">
+                      <input type="radio" name="edit_ans_${idx}" value="No" ${curAns === 'No' ? 'checked' : ''} class="accent-red-600 ml-1" onchange="onModalAnswerChange(${idx}, 'No')">
+                      <span class="font-bold text-red-700">لا</span>
+                   </label>
+                   <label class="flex items-center px-2 py-0.5 rounded cursor-pointer hover:bg-gray-100">
+                      <input type="radio" name="edit_ans_${idx}" value="NA" ${curAns === 'NA' ? 'checked' : ''} class="accent-gray-600 ml-1" onchange="onModalAnswerChange(${idx}, 'NA')">
+                      <span class="text-gray-600">غير منطبق</span>
+                   </label>
+                </div>
+             </td>
+             <td class="p-2.5">
+                <input type="text" id="edit_note_${idx}" value="${curNote.replace(/"/g, '&quot;')}" placeholder="ملاحظة عند الخطأ..." class="input text-xs py-1 px-2 border-gray-300 w-full" oninput="onModalNoteChange(${idx}, this.value)">
+             </td>
+          `;
+          tbody.appendChild(tr);
+       });
+
+       updateModalLiveScore();
+       show('edit-report-modal');
+    }
+
+    function onModalAnswerChange(idx, val) {
+       if (currentEditRecords[idx]) {
+          currentEditRecords[idx].answer = val;
+          updateModalLiveScore();
+       }
+    }
+
+    function onModalNoteChange(idx, val) {
+       if (currentEditRecords[idx]) {
+          currentEditRecords[idx].note = val;
+       }
+    }
+
+    function updateModalLiveScore() {
+       let valid = 0;
+       let yes = 0;
+       currentEditRecords.forEach(r => {
+          if (r.answer === 'Yes') {
+             yes++;
+             valid++;
+          } else if (r.answer === 'No') {
+             valid++;
+          }
+       });
+
+       const pct = valid > 0 ? Math.round((yes / valid) * 100) : 0;
+       const scoreEl = el('edit-modal-live-score');
+       const countsEl = el('edit-modal-counts');
+
+       if (scoreEl) {
+          scoreEl.innerText = `${pct}%`;
+          scoreEl.className = 'px-3 py-1 rounded-full font-black text-sm border shadow-2xs ' + (pct >= 80 ? 'bg-green-100 text-green-800 border-green-200' : (pct >= 50 ? 'bg-amber-100 text-amber-800 border-amber-200' : 'bg-red-100 text-red-800 border-red-200'));
+       }
+
+       if (countsEl) {
+          countsEl.innerText = `(${yes} مطابقة من ${valid} صالحة)`;
+       }
+    }
+
+    function closeEditReportModal() {
+       hide('edit-report-modal');
+       currentEditRecords = [];
+    }
+
+    function saveReportEdits() {
+       if (currentEditRecords.length === 0) {
+          closeEditReportModal();
+          return;
+       }
+
+       loading(true);
+       const payload = currentEditRecords.map(r => ({
+          id: r.id,
+          answer: r.answer,
+          note: r.note || '',
+          department: r.department || '',
+          category: r.category || ''
+       }));
+
+       google.script.run.withSuccessHandler(res => {
+          loading(false);
+          alert('تم حفظ تعديلات التقرير بنجاح');
+          closeEditReportModal();
+          loadReportsList();
+          
+          // If the preview is currently showing this indicator, refresh it
+          const previewContent = el('rep-content');
+          if (!previewContent.classList.contains('hidden')) {
+             viewSingleReport(currentEditingMonth, currentEditingIndicator);
+          }
+       }).withFailureHandler(err => {
+          loading(false);
+          alert('خطأ أثناء حفظ التعديلات: ' + err);
+       }).updateKpiRecords(payload);
+    }
+
+    // --- Duplicate / Clone Report Logic ---
+    let currentDuplicateRecords = [];
+    let originalDuplicateRecordsBackup = [];
+    let currentDuplicateSourceIndicator = '';
+    let currentDuplicateSourceMonth = '';
+
+    function openDuplicateReportModal(sourceMonth, indicator) {
+       currentDuplicateSourceMonth = sourceMonth;
+       currentDuplicateSourceIndicator = indicator;
+
+       loading(true);
+       google.script.run.withSuccessHandler(data => {
+          loading(false);
+          currentDuplicateRecords = (data || []).map(r => ({ ...r }));
+          originalDuplicateRecordsBackup = JSON.parse(JSON.stringify(currentDuplicateRecords));
+          renderDuplicateReportModal();
+       }).withFailureHandler(err => {
+          loading(false);
+          alert('خطأ أثناء جلب بيانات المؤشر للنسخ: ' + err);
+       }).fetchIndicatorRecordsForEdit(sourceMonth, indicator);
+    }
+
+    function renderDuplicateReportModal() {
+       el('dup-source-indicator-name').innerText = currentDuplicateSourceIndicator;
+       el('dup-source-month-name').innerText = currentDuplicateSourceMonth;
+
+       // Calculate next month as smart default (e.g. 2026-09 -> 2026-10)
+       let nextMonthStr = '';
+       if (currentDuplicateSourceMonth && currentDuplicateSourceMonth.includes('-')) {
+          const parts = currentDuplicateSourceMonth.split('-').map(Number);
+          let nY = parts[0];
+          let nM = parts[1] + 1;
+          if (nM > 12) {
+             nM = 1;
+             nY++;
+          }
+          nextMonthStr = `${nY}-${("0" + nM).slice(-2)}`;
+       } else {
+          nextMonthStr = new Date().toISOString().slice(0, 7);
+       }
+
+       el('dup-target-month').value = nextMonthStr;
+       el('dup-target-date').value = `${nextMonthStr}-01`;
+       el('dup-target-indicator').value = currentDuplicateSourceIndicator;
+
+       renderDuplicateModalRows();
+       updateDuplicateLiveScore();
+       show('duplicate-report-modal');
+    }
+
+    function onDuplicateTargetMonthChange() {
+       const m = el('dup-target-month').value;
+       if (m) {
+          el('dup-target-date').value = `${m}-01`;
+       }
+    }
+
+    function renderDuplicateModalRows() {
+       const tbody = el('dup-modal-records-body');
+       tbody.innerHTML = '';
+
+       if (currentDuplicateRecords.length === 0) {
+          tbody.innerHTML = `<tr><td colspan="5" class="p-6 text-center text-gray-400 font-medium">لا توجد بنود تقييم مسجلة في هذا المؤشر</td></tr>`;
+          return;
+       }
+
+       currentDuplicateRecords.forEach((r, idx) => {
+          const tr = document.createElement('tr');
+          tr.className = 'hover:bg-emerald-50/40 transition border-b';
+
+          const curAns = r.answer || 'Yes';
+          const curNote = r.note || '';
+          const deptCatStr = [r.department, r.category].filter(Boolean).join(' - ') || 'عام';
+          const sessionLabel = r.sessionNumber ? `جلسة ${r.sessionNumber}` : '';
+
+          const pName = r.procedure || getProcedureForQuestion(r.question, currentDuplicateIndicator) || 'عام';
+          tr.innerHTML = `
+             <td class="p-2.5 border-l text-center text-xs text-gray-500 font-mono">${idx + 1}</td>
+             <td class="p-2.5 border-l">
+                <div class="inline-flex items-center gap-1 text-[10px] font-bold text-emerald-800 bg-emerald-50 px-2 py-0.5 rounded border border-emerald-100 mb-1">
+                   <i class="fas fa-stethoscope text-[9px]"></i> الإجراء: ${pName}
+                </div>
+                <div class="text-xs font-bold text-gray-800 leading-relaxed">${r.question}</div>
+                ${sessionLabel ? `<div class="text-[10px] text-gray-400 mt-0.5">${sessionLabel}</div>` : ''}
+             </td>
+             <td class="p-2.5 border-l text-xs text-emerald-950 font-semibold bg-emerald-50/30">
+                ${deptCatStr}
+             </td>
+             <td class="p-2.5 border-l text-center">
+                <div class="inline-flex gap-1 bg-white p-1 rounded-md border border-gray-200 shadow-2xs text-xs">
+                   <label class="flex items-center px-2 py-0.5 rounded cursor-pointer hover:bg-green-50">
+                      <input type="radio" name="dup_ans_${idx}" value="Yes" ${curAns === 'Yes' ? 'checked' : ''} class="accent-green-600 ml-1" onchange="onDuplicateAnswerChange(${idx}, 'Yes')">
+                      <span class="font-bold text-green-700">نعم</span>
+                   </label>
+                   <label class="flex items-center px-2 py-0.5 rounded cursor-pointer hover:bg-red-50">
+                      <input type="radio" name="dup_ans_${idx}" value="No" ${curAns === 'No' ? 'checked' : ''} class="accent-red-600 ml-1" onchange="onDuplicateAnswerChange(${idx}, 'No')">
+                      <span class="font-bold text-red-700">لا</span>
+                   </label>
+                   <label class="flex items-center px-2 py-0.5 rounded cursor-pointer hover:bg-gray-100">
+                      <input type="radio" name="dup_ans_${idx}" value="NA" ${curAns === 'NA' ? 'checked' : ''} class="accent-gray-600 ml-1" onchange="onDuplicateAnswerChange(${idx}, 'NA')">
+                      <span class="text-gray-600">غير منطبق</span>
+                   </label>
+                </div>
+             </td>
+             <td class="p-2.5">
+                <input type="text" id="dup_note_${idx}" value="${curNote.replace(/"/g, '&quot;')}" placeholder="ملاحظة عند الخطأ..." class="input text-xs py-1 px-2 border-gray-300 w-full" oninput="onDuplicateNoteChange(${idx}, this.value)">
+             </td>
+          `;
+          tbody.appendChild(tr);
+       });
+    }
+
+    function onDuplicateAnswerChange(idx, val) {
+       if (currentDuplicateRecords[idx]) {
+          currentDuplicateRecords[idx].answer = val;
+          updateDuplicateLiveScore();
+       }
+    }
+
+    function onDuplicateNoteChange(idx, val) {
+       if (currentDuplicateRecords[idx]) {
+          currentDuplicateRecords[idx].note = val;
+       }
+    }
+
+    function setAllDuplicateAnswers(val) {
+       currentDuplicateRecords.forEach((r, idx) => {
+          r.answer = val;
+          const radios = document.querySelectorAll(`input[name="dup_ans_${idx}"]`);
+          radios.forEach(radio => {
+             radio.checked = (radio.value === val);
+          });
+       });
+       updateDuplicateLiveScore();
+    }
+
+    function resetDuplicateToOriginal() {
+       currentDuplicateRecords = JSON.parse(JSON.stringify(originalDuplicateRecordsBackup));
+       renderDuplicateModalRows();
+       updateDuplicateLiveScore();
+    }
+
+    function clearDuplicateNotes() {
+       currentDuplicateRecords.forEach((r, idx) => {
+          r.note = '';
+          const noteInput = el(`dup_note_${idx}`);
+          if (noteInput) noteInput.value = '';
+       });
+    }
+
+    function updateDuplicateLiveScore() {
+       let valid = 0;
+       let yes = 0;
+       currentDuplicateRecords.forEach(r => {
+          if (r.answer === 'Yes') {
+             yes++;
+             valid++;
+          } else if (r.answer === 'No') {
+             valid++;
+          }
+       });
+
+       const pct = valid > 0 ? Math.round((yes / valid) * 100) : 0;
+       const scoreEl = el('dup-modal-live-score');
+       const countsEl = el('dup-modal-counts');
+
+       if (scoreEl) {
+          scoreEl.innerText = `${pct}%`;
+          scoreEl.className = 'px-3 py-1 rounded-full font-black text-sm border shadow-2xs ' + (pct >= 80 ? 'bg-green-100 text-green-800 border-green-200' : (pct >= 50 ? 'bg-amber-100 text-amber-800 border-amber-200' : 'bg-red-100 text-red-800 border-red-200'));
+       }
+
+       if (countsEl) {
+          countsEl.innerText = `(${yes} مطابقة من ${valid} صالحة)`;
+       }
+    }
+
+    function closeDuplicateReportModal() {
+       hide('duplicate-report-modal');
+       currentDuplicateRecords = [];
+       originalDuplicateRecordsBackup = [];
+    }
+
+    function saveClonedReport() {
+       const targetMonth = el('dup-target-month').value.trim();
+       if (!targetMonth) {
+          alert('يرجى اختيار الشهر المستهدف للتقرير الجديد');
+          return;
+       }
+
+       const targetIndicator = el('dup-target-indicator').value.trim() || currentDuplicateSourceIndicator;
+       const targetDate = el('dup-target-date').value.trim() || (targetMonth + '-01');
+
+       if (currentDuplicateRecords.length === 0) {
+          alert('لا توجد سجلات للنسخ');
+          return;
+       }
+
+       loading(true);
+       const payload = currentDuplicateRecords.map(r => ({
+          question: r.question,
+          answer: r.answer,
+          note: r.note || '',
+          department: r.department || '',
+          category: r.category || '',
+          sessionNumber: r.sessionNumber || 1,
+          inspector: r.inspector || '',
+          targetName: r.targetName || '',
+          targetJobId: r.targetJobId || ''
+       }));
+
+       google.script.run.withSuccessHandler(res => {
+          loading(false);
+          if (res && res.success) {
+             alert(`تم نسخ المؤشر (${targetIndicator}) بنجاح لشهر (${targetMonth}) مع حفظ الإحصائية الجديدة.`);
+             closeDuplicateReportModal();
+             // Reload table showing all months
+             showAllMonthsReports();
+          } else {
+             alert('خطأ أثناء حفظ التقرير المنسوخ: ' + (res ? res.error : ''));
+          }
+       }).withFailureHandler(err => {
+          loading(false);
+          alert('خطأ أثناء حفظ التقرير المنسوخ: ' + err);
+       }).cloneKpiReport(targetMonth, targetDate, targetIndicator, payload);
+    }
+
+    // 6. Unified Report Rendering (Each report on an individual printable page)
+    function renderReport(data, monthStr) {
+       show('rep-content');
+       
+       const hospitalName = (config && config.hospital_name) ? config.hospital_name : 'مستشفى المنيا الجامعي للعيون';
+       const container = el('rep-tables');
+       container.innerHTML = '';
+
+       if (!data || data.length === 0) {
+          container.innerHTML = '<p class="text-center text-gray-500 py-10">لا توجد بيانات مسجلة لهذا التقرير</p>';
+          return;
+       }
+
+       // Group by (Month + Indicator) to preserve individual indicator reports across months or selected list
+       const reportGroups = {};
+       data.forEach(r => {
+          const ind = r.indicator ? String(r.indicator).trim() : 'مؤشر غير محدد';
+          const mon = r.month ? String(r.month).trim() : '';
+          const key = `${mon}___${ind}`;
+          if (!reportGroups[key]) {
+             reportGroups[key] = {
+                month: mon,
+                indicator: ind,
+                rows: []
+             };
+          }
+          reportGroups[key].rows.push(r);
+       });
+
+       const groupKeys = Object.keys(reportGroups);
+       const totalReports = groupKeys.length;
+
+       groupKeys.forEach((key, groupIdx) => {
+          const group = reportGroups[key];
+          const indName = group.indicator;
+          const rows = group.rows;
+
+          // 1. Calculate Overall Score for Indicator
+          const validRows = rows.filter(r => r.answer !== 'NA');
+          const totalValid = validRows.length;
+          const totalYes = validRows.filter(r => r.answer === 'Yes').length;
+          const overallPct = totalValid ? Math.round((totalYes / totalValid) * 100) : 0;
+          
+          // Badge Color
+          const badgeColor = overallPct >= 80 ? 'bg-green-100 text-green-800 border border-green-200' : (overallPct >= 50 ? 'bg-amber-100 text-amber-800 border border-amber-200' : 'bg-red-100 text-red-800 border border-red-200');
+
+          // 2. Aggregate by Procedure (نتائج الإجراءات)
+          const procStats = {};
+          validRows.forEach(r => {
+             const p = (r.procedure || getProcedureForQuestion(r.question, indName) || 'عام').trim();
+             if (!procStats[p]) procStats[p] = { total: 0, yes: 0, no: 0 };
+             procStats[p].total++;
+             if (r.answer === 'Yes') procStats[p].yes++;
+             else if (r.answer === 'No') procStats[p].no++;
+          });
+          const hasProcs = Object.keys(procStats).length > 0;
+
+          // 3. Aggregate by Department (only when department is selected)
+          const deptStats = {};
+          validRows.forEach(r => {
+              const d = r.department ? String(r.department).trim() : '';
+              if (d) {
+                 if(!deptStats[d]) deptStats[d] = { total: 0, yes: 0 };
+                 deptStats[d].total++;
+                 if(r.answer === 'Yes') deptStats[d].yes++;
+              }
+          });
+          
+          // 4. Aggregate by Category (only when category is selected)
+          const catStats = {};
+          validRows.forEach(r => {
+              const c = r.category ? String(r.category).trim() : '';
+              if (c) {
+                 if(!catStats[c]) catStats[c] = { total: 0, yes: 0 };
+                 catStats[c].total++;
+                 if(r.answer === 'Yes') catStats[c].yes++;
+              }
+          });
+
+          const hasDepts = Object.keys(deptStats).length > 0;
+          const hasCats = Object.keys(catStats).length > 0;
+
+          // 5. Aggregate by Question (نسبة تقييم كل سؤال من أسئلة المؤشر)
+          const questionStats = {};
+          rows.forEach(r => {
+             const q = String(r.question || '').trim();
+             if (!q) return;
+             const p = (r.procedure || getProcedureForQuestion(q, indName) || 'عام').trim();
+             if (!questionStats[q]) {
+                questionStats[q] = {
+                   question: q,
+                   procedure: p,
+                   total: 0,
+                   yes: 0,
+                   no: 0,
+                   na: 0,
+                   valid: 0
+                };
+             }
+             questionStats[q].total++;
+             if (r.answer === 'Yes') {
+                questionStats[q].yes++;
+                questionStats[q].valid++;
+             } else if (r.answer === 'No') {
+                questionStats[q].no++;
+                questionStats[q].valid++;
+             } else if (r.answer === 'NA') {
+                questionStats[q].na++;
+             }
+          });
+
+          // Also check config.indicators to include any configured questions for this indicator
+          if (config && config.indicators) {
+             config.indicators.forEach(item => {
+                if (String(item.indicator || '').trim() === indName) {
+                   const q = String(item.question || '').trim();
+                   const p = String(item.procedure || 'عام').trim();
+                   if (q && !questionStats[q]) {
+                      questionStats[q] = {
+                         question: q,
+                         procedure: p,
+                         total: 0,
+                         yes: 0,
+                         no: 0,
+                         na: 0,
+                         valid: 0
+                      };
+                   }
+                }
+             });
+          }
+
+          const questionsList = Object.values(questionStats);
+          const hasQuestions = questionsList.length > 0;
+
+          // Report Subtitle for this individual report
+          const monthText = group.month ? ` - شهر: ${group.month}` : '';
+          const singleReportHeaderTitle = `تقرير مؤشر: ${indName}${monthText}`;
+
+          let pageHtml = `
+             <div class="report-print-page bg-white p-4 md:p-6 rounded-lg shadow-sm border border-gray-200 mb-6">
+                
+                <!-- Official Print Header (No app logo for print/PDF) -->
+                <div class="border-b-2 border-indigo-900 pb-2 mb-3 text-center print-header">
+                   <h1 class="text-lg md:text-xl font-black text-gray-900">${hospitalName}</h1>
+                   <p class="text-xs text-gray-600 mt-0.5">وحدة مكافحة العدوى - تقرير مؤشرات الأداء</p>
+                   <div class="mt-2 flex flex-wrap items-center justify-between gap-2 text-xs font-bold text-indigo-950 bg-indigo-50/90 px-3 py-1.5 rounded border border-indigo-200 shadow-2xs">
+                      <span class="flex items-center gap-1.5">
+                         <span class="text-gray-500 font-normal">المؤشر:</span>
+                         <strong class="text-indigo-900 font-black text-sm">${indName}</strong>
+                      </span>
+                      <span class="flex items-center gap-1.5">
+                         <span class="text-gray-500 font-normal">الشهر:</span>
+                         <strong class="text-indigo-900">${group.month || 'كافة الفترات'}</strong>
+                      </span>
+                      <span class="flex items-center gap-1.5">
+                         <span class="text-gray-500 font-normal">نسبة الالتزام العامة:</span>
+                         <span class="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-black ${badgeColor}">
+                            ${overallPct}% (${overallPct >= 80 ? 'ممتاز' : (overallPct >= 50 ? 'متوسط' : 'يحتاج تحسين')})
+                         </span>
+                      </span>
+                   </div>
+                </div>
+
+                <!-- Questions Evaluation Breakdown Table (جدول: الإجراء | السؤال | النسبة) -->
+                <div class="flex-1 overflow-x-auto mb-3">
+                   <table class="report-table w-full border-collapse border border-gray-300 text-xs shadow-2xs rounded overflow-hidden">
+                      <thead class="bg-indigo-50/95 text-indigo-950 font-black border-b border-gray-300">
+                         <tr>
+                            <th class="border border-gray-300 py-2 px-3 text-right text-xs font-black w-[28%] bg-indigo-50/90">الإجراء</th>
+                            <th class="border border-gray-300 py-2 px-3 text-right text-xs font-black bg-indigo-50/90">السؤال</th>
+                            <th class="border border-gray-300 py-2 px-2 text-center text-xs font-black w-24 bg-indigo-50/90">النسبة</th>
+                         </tr>
+                      </thead>
+                      <tbody>
+                         ${questionsList.length === 0 ? `
+                            <tr>
+                               <td colspan="3" class="border border-gray-300 p-4 text-center text-gray-500">لا توجد بنود تقييم مسجلة لهذا المؤشر</td>
+                            </tr>
+                         ` : questionsList.sort((a, b) => (a.procedure || '').localeCompare(b.procedure || '', 'ar')).map(qObj => {
+                            const validCount = qObj.valid;
+                            const yesCount = qObj.yes;
+                            const pct = validCount > 0 ? Math.round((yesCount / validCount) * 100) : 0;
+                            const pctText = validCount > 0 ? `${pct}%` : '---';
+                            const clr = validCount === 0 ? 'text-gray-400' : (pct >= 80 ? 'text-green-700 font-bold' : (pct >= 50 ? 'text-amber-700 font-bold' : 'text-red-700 font-bold'));
+                            const bg = validCount === 0 ? 'bg-gray-50/40' : (pct >= 80 ? 'bg-green-50/40' : (pct >= 50 ? 'bg-amber-50/40' : 'bg-red-50/40'));
+
+                            return `
+                               <tr class="border-b border-gray-200 hover:bg-slate-50 transition">
+                                  <td class="border border-gray-300 py-1.5 px-3 font-bold text-gray-800 text-[11px] bg-slate-50/60 align-top">
+                                     <div class="flex items-center gap-1.5">
+                                        <i class="fas fa-stethoscope text-indigo-400 text-[10px] no-print"></i>
+                                        <span>${qObj.procedure || 'عام'}</span>
+                                     </div>
+                                  </td>
+                                  <td class="border border-gray-300 py-1.5 px-3 text-gray-900 text-[11px] leading-snug align-top">
+                                     ${qObj.question}
+                                  </td>
+                                  <td class="border border-gray-300 py-1.5 px-2 text-center font-black ${clr} ${bg} text-xs align-middle">
+                                     ${pctText}
+                                  </td>
+                               </tr>
+                            `;
+                         }).join('')}
+                      </tbody>
+                   </table>
+                </div>
+
+             </div>
+          `;
+
+          // If there are multiple reports and this is not the last one, add an on-screen preview divider
+          if (groupIdx < totalReports - 1) {
+             pageHtml += `
+                <div class="no-print my-8 py-3 px-4 bg-indigo-50/80 border-2 border-dashed border-indigo-200 rounded-lg text-center text-xs font-bold text-indigo-800 flex items-center justify-center gap-2">
+                   <i class="fas fa-file-alt text-indigo-600"></i>
+                   <span>نهاية هذا التقرير — التقرير التالي (${reportGroups[groupKeys[groupIdx + 1]].indicator}) سيطبع في صفحة منفصلة</span>
+                </div>
+             `;
+          }
+
+          container.innerHTML += pageHtml;
+       });
+    }
+
+    // --- Individuals Logic ---
+    let allIndividualsData = [];
+
+    function loadIndividuals() {
+       loading(true);
+       
+       const today = new Date();
+       const currentMonth = today.toISOString().slice(0, 7); // YYYY-MM
+       if(!el('indiv-month').value) el('indiv-month').value = currentMonth;
+
+       google.script.run.withSuccessHandler(data => {
+          allIndividualsData = data;
+          
+          const indSelect = el('indiv-indicator');
+          const curSelect = indSelect.value;
+          indSelect.innerHTML = '<option value="">جميع المؤشرات</option>' + 
+             (config.indicators||[]).map(i => `<option value="${i.indicator}">${i.indicator}</option>`).join('');
+          indSelect.value = curSelect;
+          
+          filterIndividuals();
+          loading(false);
+       }).fetchIndividualAssessments();
+    }
+
+    function filterIndividuals() {
+       const mVal = el('indiv-month').value;
+       const iVal = el('indiv-indicator').value;
+       const sVal = el('indiv-search').value.toLowerCase().trim();
+       
+       if(el('indiv-print-title')) {
+           el('indiv-print-title').innerText = `تقرير شهر: ${mVal || 'الكل'}${iVal ? ' - مؤشر: ' + iVal : ''}`;
+       }
+       
+       let filtered = allIndividualsData;
+       
+       if (mVal) {
+          const [y, m] = mVal.split('-');
+          filtered = filtered.filter(row => row.year == y && row.month == m);
+       }
+       if (iVal) {
+          filtered = filtered.filter(row => row.indicator === iVal);
+       }
+       if (sVal) {
+          filtered = filtered.filter(row => 
+             (row.name && row.name.toLowerCase().includes(sVal)) || 
+             (row.jobId && row.jobId.toLowerCase().includes(sVal))
+          );
+       }
+       
+       const tbody = el('indiv-tbody');
+       tbody.innerHTML = '';
+       if(filtered.length === 0) {
+          tbody.innerHTML = '<tr><td colspan="7" class="text-center p-6 text-gray-500">لا توجد بيانات مطابقة</td></tr>';
+          return;
+       }
+       
+       filtered.forEach(row => {
+          const dt = new Date(row.date);
+          const dateStr = dt.toLocaleDateString('ar-EG');
+          
+          let scoreClass = 'text-green-600 font-bold';
+          let compStatus = 'كفء';
+          let compRec = '---';
+          let badgeClass = 'bg-green-100 text-green-800';
+
+          if (row.score < 50) {
+              scoreClass = 'text-red-600 font-bold';
+              compStatus = 'غير كفء';
+              compRec = 'بحاجة للتدريب';
+              badgeClass = 'bg-red-100 text-red-800 border border-red-200';
+          } else if (row.score <= 75) {
+              scoreClass = 'text-orange-500 font-bold';
+              compStatus = 'مقبول';
+              compRec = 'مراجعة التدريب واعادة التقييم';
+              badgeClass = 'bg-orange-100 text-orange-800 border border-orange-200';
+          } else {
+              badgeClass = 'bg-green-100 text-green-800 border border-green-200';
+          }
+          
+          const tr = document.createElement('tr');
+          tr.className = 'border-b hover:bg-gray-50';
+          tr.innerHTML = `
+             <td class="p-3 border whitespace-nowrap">${dateStr}</td>
+             <td class="p-3 border font-bold">${row.name}</td>
+             <td class="p-3 border text-gray-600">${row.jobId}</td>
+             <td class="p-3 border">${row.indicator}</td>
+             <td class="p-3 border text-center ${scoreClass}">${row.score}%</td>
+             <td class="p-3 border text-red-600 text-[11px] leading-relaxed max-w-[250px] text-right">${row.notes || '---'}</td>
+             <td class="p-3 border text-center text-xs">
+                <div class="inline-block px-2 py-1 rounded font-bold ${badgeClass} mb-1">${compStatus}</div>
+                <div class="text-gray-700 font-bold mt-1">${compRec}</div>
+             </td>
+          `;
+          tbody.appendChild(tr);
+       });
+    }
+
+    // --- Settings / Auth ---
+    function doLogin() {
+       const p = el('login-pass').value;
+       if (!p) return;
+       loading(true);
+       hide('login-error');
+       google.script.run.withSuccessHandler(role => {
+          loading(false);
+          if(role) { 
+             currentUserRole = role;
+             hide('login-modal');
+             el('login-pass').value = '';
+             applyPermissions();
+             nav('home');
+             loadSettings();
+          } else {
+             show('login-error');
+          }
+       }).withFailureHandler(err => {
+          loading(false); alert('خطأ: ' + err);
+       }).login(p);
+    }
+
+    function logout() {
+       currentUserRole = null;
+       document.querySelectorAll('.page').forEach(p => p.classList.add('hidden'));
+       show('login-modal');
+       document.getElementById('mobile-menu').classList.add('hidden');
+    }
+
+    function applyPermissions() {
+        document.querySelectorAll('.nav-entry, .nav-settings, .action-print').forEach(el => el.classList.add('hidden'));
+        
+        if (currentUserRole === 'admin') {
+            document.querySelectorAll('.nav-entry, .nav-settings, .action-print').forEach(el => el.classList.remove('hidden'));
+        } else if (currentUserRole === 'user') {
+            document.querySelectorAll('.nav-entry, .action-print').forEach(el => el.classList.remove('hidden'));
+        } else if (currentUserRole === 'manager') {
+            // Nothing to show among restricted
+        }
+    }
+
+    function renderSettingsPage() {
+       el('set-hospital-name').value = config.hospital_name || 'مستشفى المنيا الجامعي للعيون';
+       el('set-pass-admin').value = config.admin_password || 'admin';
+       el('set-pass-manager').value = config.manager_password || 'manager';
+       el('set-pass-user').value = config.user_password || 'user';
+       el('set-insp').value = (config.inspectors||[]).join('\n');
+       el('set-dept').value = (config.departments||[]).join('\n');
+       el('set-cat').value = (config.categories||[]).join('\n');
+       
+       renderKpiList();
+       renderTargetsList();
+    }
+    
+    function renderTargetsList() {
+       const uniqueInds = [...new Set((config.indicators||[]).map(i => i.indicator))];
+       const targetsDiv = el('set-targets-list');
+       targetsDiv.innerHTML = '';
+       
+       const tgts = config.indicator_targets || {};
+       uniqueInds.forEach(ind => {
+          const val = tgts[ind] || 10;
+          targetsDiv.innerHTML += `
+            <div class="flex items-center justify-between bg-gray-50 p-2 rounded border border-gray-200">
+               <span class="text-sm font-bold text-gray-700 truncate ml-2" title="${ind}">${ind}</span>
+               <input type="number" min="1" value="${val}" class="target-input w-20 border border-gray-300 rounded p-1 text-center" data-ind="${ind}">
+            </div>
+          `;
+       });
+    }
+
+    function updateDatalists() {
+       const indList = el('existing-indicators-list');
+       const procList = el('existing-procedures-list');
+       if (!indList || !procList) return;
+       
+       const inds = [...new Set((config.indicators || []).map(i => i.indicator).filter(Boolean))];
+       indList.innerHTML = inds.map(x => `<option value="${x}">`).join('');
+       
+       const procs = [...new Set((config.indicators || []).map(i => i.procedure).filter(Boolean))];
+       procList.innerHTML = procs.map(x => `<option value="${x}">`).join('');
+    }
+
+    function renderKpiList() {
+       const tbody = el('kpi-set-list');
+       if (!tbody) return;
+       tbody.innerHTML = '';
+       
+       updateDatalists();
+       
+       const rawList = config.indicators || [];
+       if (rawList.length === 0) {
+          tbody.innerHTML = `<tr><td colspan="7" class="p-6 text-center text-gray-400 font-medium">لا توجد مؤشرات أو أسئلة مسجلة حتى الآن</td></tr>`;
+          return;
+       }
+
+       // Map with original index to keep delKpi and editState intact
+       const items = rawList.map((item, originalIndex) => ({
+          ...item,
+          originalIndex,
+          indicator: item.indicator ? item.indicator.trim() : 'غير محدد',
+          procedure: item.procedure ? item.procedure.trim() : 'عام'
+       }));
+
+       // Group by Indicator -> Procedure
+       const grouped = {};
+       items.forEach(item => {
+          const ind = item.indicator;
+          const proc = item.procedure;
+          if (!grouped[ind]) grouped[ind] = {};
+          if (!grouped[ind][proc]) grouped[ind][proc] = [];
+          grouped[ind][proc].push(item);
+       });
+
+       Object.keys(grouped).forEach(indName => {
+          const procsObj = grouped[indName];
+          const procNames = Object.keys(procsObj);
+          const totalQuestionsForInd = procNames.reduce((acc, p) => acc + procsObj[p].length, 0);
+
+          // 1. Group Header: Indicator
+          const indTr = document.createElement('tr');
+          indTr.className = 'bg-slate-100 font-bold text-indigo-950 border-t-2 border-indigo-300';
+          indTr.innerHTML = `
+             <td colspan="7" class="p-2.5 bg-slate-100">
+                <div class="flex items-center justify-between">
+                   <div class="flex items-center gap-2">
+                      <span class="inline-flex items-center justify-center w-6 h-6 rounded bg-indigo-700 text-white text-xs">
+                         <i class="fas fa-chart-pie"></i>
+                      </span>
+                      <span class="text-xs font-black text-indigo-950">المؤشر: ${indName}</span>
+                      <span class="text-[11px] text-gray-500 font-normal">(${procNames.length} إجراء / ${totalQuestionsForInd} أسئلة)</span>
+                   </div>
+                   <div class="flex items-center gap-1.5 flex-wrap">
+                      <button type="button" onclick="openRenameIndicatorModal('${indName.replace(/'/g, "\\'")}')" class="text-[11px] bg-white border border-amber-300 text-amber-800 hover:bg-amber-50 px-2.5 py-1 rounded font-bold transition flex items-center gap-1 shadow-2xs" title="تعديل اسم هذا المؤشر">
+                         <i class="fas fa-pen text-amber-600 text-[10px]"></i> تعديل اسم المؤشر
+                      </button>
+                      <button type="button" onclick="openAddProcedureModal('${indName.replace(/'/g, "\\'")}')" class="text-[11px] bg-white border border-emerald-300 text-emerald-800 hover:bg-emerald-50 px-2.5 py-1 rounded font-bold transition flex items-center gap-1 shadow-2xs" title="إضافة إجراء جديد لهذا المؤشر وربطه بالتقارير">
+                         <i class="fas fa-plus-circle text-emerald-600 text-[10px]"></i> إضافة إجراء للمؤشر
+                      </button>
+                      <button type="button" onclick="quickAddUnderInd('${indName.replace(/'/g, "\\'")}')" class="text-[11px] bg-white border border-indigo-200 text-indigo-700 hover:bg-indigo-50 px-2 py-1 rounded transition" title="إضافة سؤال جديد لهذا المؤشر">
+                         <i class="fas fa-plus ml-1"></i> إضافة سؤال لهذا المؤشر
+                      </button>
+                   </div>
+                </div>
+             </td>
+          `;
+          tbody.appendChild(indTr);
+
+          // 2. Procedures under this Indicator
+          procNames.forEach(procName => {
+             const qList = procsObj[procName];
+
+             // Procedure Sub-header Bar (بحيث يظهر الإجراء وأسفله الأسئلة الخاصة به في المؤشر)
+             const procTr = document.createElement('tr');
+             procTr.className = 'bg-indigo-50/80 border-y border-indigo-100 font-semibold';
+             procTr.innerHTML = `
+                <td class="p-2 border-l border-gray-200 text-gray-400 text-[11px] select-none">${indName}</td>
+                <td colspan="6" class="p-2 bg-indigo-50 font-bold text-indigo-900">
+                   <div class="flex items-center justify-between">
+                      <div class="flex items-center gap-2">
+                         <span class="inline-flex items-center px-2 py-0.5 rounded text-xs bg-indigo-600 text-white font-bold shadow-2xs">
+                            <i class="fas fa-stethoscope ml-1 text-[10px]"></i> الإجراء:
+                         </span>
+                         <span class="text-xs font-bold text-gray-900">${procName}</span>
+                         <span class="text-[10px] text-indigo-700 font-normal bg-indigo-100/60 px-1.5 py-0.5 rounded">(${qList.length} أسئلة تابعة)</span>
+                      </div>
+                      <div class="flex items-center gap-2">
+                         <button type="button" onclick="quickAddUnderProc('${indName.replace(/'/g, "\\'")}', '${procName.replace(/'/g, "\\'")}')" class="text-[11px] text-indigo-700 hover:text-indigo-900 bg-white hover:bg-indigo-100/50 border border-indigo-200 px-2 py-0.5 rounded transition" title="إضافة سؤال تابع لهذا الإجراء مباشرة">
+                            <i class="fas fa-plus ml-1 text-[10px]"></i> سؤال للإجراء
+                         </button>
+                         <button type="button" onclick="editProcName('${indName.replace(/'/g, "\\'")}', '${procName.replace(/'/g, "\\'")}')" class="text-[11px] text-indigo-700 hover:text-indigo-900 bg-white hover:bg-indigo-100/50 border border-indigo-200 px-2 py-0.5 rounded transition" title="تعديل اسم الإجراء لجميع الأسئلة التابعة له">
+                            <i class="fas fa-pen ml-1 text-[10px]"></i> تعديل الإجراء
+                         </button>
+                         <button type="button" onclick="deleteProcedure('${indName.replace(/'/g, "\\'")}', '${procName.replace(/'/g, "\\'")}')" class="text-[11px] text-red-600 hover:text-red-800 bg-white hover:bg-red-50 border border-red-200 px-2 py-0.5 rounded transition font-bold" title="حذف هذا الإجراء وكافة أسئلته وحذفه من جميع التقارير">
+                            <i class="fas fa-trash-alt ml-1 text-[10px]"></i> حذف الإجراء
+                         </button>
+                      </div>
+                   </div>
+                </td>
+             `;
+             tbody.appendChild(procTr);
+
+             // 3. Questions belonging to this Procedure (أسفل الإجراء مباشرة)
+             qList.forEach(item => {
+                const tr = document.createElement('tr');
+                tr.className = 'border-b hover:bg-gray-50/80 transition';
+                
+                const catsStr = (item.cats && item.cats.length) ? item.cats.join(', ') : 'جميع الفئات';
+                const deptsStr = (item.depts && item.depts.length) ? item.depts.join(', ') : 'جميع الأقسام';
+
+                tr.innerHTML = `
+                   <td class="p-2.5 border text-gray-400 text-[11px]">${item.indicator}</td>
+                   <td class="p-2.5 border text-indigo-900 font-semibold text-xs bg-indigo-50/30">
+                      <span class="text-xs text-indigo-800">${item.procedure}</span>
+                   </td>
+                   <td class="p-2.5 border font-medium text-gray-800">
+                      <div class="flex items-start gap-1.5">
+                         <span class="text-indigo-500 font-bold text-xs mt-0.5">•</span>
+                         <span class="text-xs leading-relaxed">${item.question}</span>
+                      </div>
+                   </td>
+                   <td class="p-2.5 border text-red-600 text-xs">${item.note || '-'}</td>
+                   <td class="p-2.5 border text-center">
+                      <button onclick="openSelectionEditor('cats', ${item.originalIndex})" class="bg-indigo-100 text-indigo-700 hover:bg-indigo-200 px-2 py-1 rounded text-xs truncate max-w-[100px] transition" title="${catsStr}">
+                         ${catsStr} <i class="fas fa-edit mr-1"></i>
+                      </button>
+                   </td>
+                   <td class="p-2.5 border text-center">
+                      <button onclick="openSelectionEditor('depts', ${item.originalIndex})" class="bg-teal-100 text-teal-700 hover:bg-teal-200 px-2 py-1 rounded text-xs truncate max-w-[100px] transition" title="${deptsStr}">
+                         ${deptsStr} <i class="fas fa-edit mr-1"></i>
+                      </button>
+                   </td>
+                   <td class="p-2.5 border text-center">
+                      <button type="button" onclick="delKpi('${item.indicator.replace(/'/g, "\\'")}', '${item.question.replace(/'/g, "\\'")}')" class="text-red-500 hover:text-red-700 p-1.5 rounded hover:bg-red-50 transition" title="إلغاء وحذف هذا السؤال من المؤشر ومن كافة النتائج المحفوظة">
+                         <i class="fas fa-trash-alt"></i>
+                      </button>
+                   </td>
+                `;
+                tbody.appendChild(tr);
+             });
+          });
+       });
+    }
+
+    function quickAddUnderInd(indName) {
+       el('new-ind-name').value = indName;
+       el('new-ind-proc').value = '';
+       el('new-ind-proc').focus();
+    }
+
+    function quickAddUnderProc(indName, procName) {
+       el('new-ind-name').value = indName;
+       el('new-ind-proc').value = procName;
+       el('new-ind-q').focus();
+    }
+
+    function editProcName(indName, oldProc) {
+       const newProc = prompt(`تعديل اسم الإجراء التابع للمؤشر (${indName}):`, oldProc);
+       if (newProc === null) return;
+       const trimmed = newProc.trim();
+       if (!trimmed || trimmed === oldProc) return;
+
+       loading(true);
+       google.script.run
+          .withSuccessHandler(res => {
+             loading(false);
+             (config.indicators || []).forEach(item => {
+                if (item.indicator === indName && (item.procedure || 'عام') === oldProc) {
+                   item.procedure = trimmed;
+                }
+             });
+             renderKpiList();
+             updateDatalists();
+             const updCount = res && res.updatedHistoricalCount ? ` وتحديثه في ${res.updatedHistoricalCount} سجل بالتقارير.` : '.';
+             alert(`تم تعديل اسم الإجراء إلى "${trimmed}" بنجاح${updCount}`);
+             if (typeof rawReportsList !== 'undefined' && rawReportsList.length > 0) {
+                loadReportsList();
+             }
+          })
+          .withFailureHandler(err => {
+             loading(false);
+             alert('خطأ أثناء تعديل اسم الإجراء: ' + err);
+          })
+          .renameProcedure(indName, oldProc, trimmed, true);
+    }
+
+    function deleteProcedure(indName, procName) {
+       if (!confirm(`هل أنت متأكد من حذف الإجراء "${procName}" التابع للمؤشر "${indName}"؟\n\nتنبيه: سيتم حذف الإجراء وكافة الأسئلة التابعة له من الإعدادات، وحذفه تلقائياً من جميع تقارير المؤشر المحفوظة في قاعدة البيانات.`)) {
+          return;
+       }
+
+       loading(true);
+       google.script.run
+          .withSuccessHandler(res => {
+             loading(false);
+             config.indicators = (config.indicators || []).filter(item => {
+                return !(item.indicator === indName && (item.procedure || 'عام') === procName);
+             });
+             renderKpiList();
+             renderTargetsList();
+             updateDatalists();
+             fillDropdowns();
+             const delRepCount = res && res.deletedFromReports ? res.deletedFromReports : 0;
+             alert(`تم حذف الإجراء "${procName}" بنجاح وحذفه من ${delRepCount} سجل في التقارير.`);
+             if (typeof rawReportsList !== 'undefined' && rawReportsList.length > 0) {
+                loadReportsList();
+             }
+          })
+          .withFailureHandler(err => {
+             loading(false);
+             alert('خطأ أثناء حذف الإجراء: ' + err);
+          })
+          .deleteProcedureFromIndicator(indName, procName);
+    }
+
+    // --- Rename Indicator Logic (تعديل اسم المؤشر في الإعدادات) ---
+    function openRenameIndicatorModal(targetIndName) {
+       const select = el('rename-ind-select');
+       if (!select) return;
+       select.innerHTML = '';
+
+       const rawList = config.indicators || [];
+       const uniqueInds = [...new Set(rawList.map(i => (i.indicator || '').trim()).filter(Boolean))];
+
+       if (uniqueInds.length === 0) {
+          alert('لا توجد مؤشرات مسجلة لتعديلها حالياً.');
+          return;
+       }
+
+       uniqueInds.forEach(ind => {
+          const opt = document.createElement('option');
+          opt.value = ind;
+          opt.textContent = ind;
+          select.appendChild(opt);
+       });
+
+       if (targetIndName && uniqueInds.includes(targetIndName)) {
+          select.value = targetIndName;
+       } else {
+          select.value = uniqueInds[0];
+       }
+
+       onRenameIndSelectChange();
+       const modal = el('rename-indicator-modal');
+       if (modal) modal.classList.remove('hidden');
+       setTimeout(() => {
+          const input = el('rename-ind-new-name');
+          if (input) {
+             input.focus();
+             input.select();
+          }
+       }, 50);
+    }
+
+    function onRenameIndSelectChange() {
+       const select = el('rename-ind-select');
+       const input = el('rename-ind-new-name');
+       const stats = el('rename-ind-stats');
+       if (!select || !input) return;
+
+       const selectedInd = (select.value || '').trim();
+       input.value = selectedInd;
+
+       const rawList = config.indicators || [];
+       const matching = rawList.filter(i => (i.indicator || '').trim() === selectedInd);
+       const procs = new Set(matching.map(i => (i.procedure || 'عام').trim()));
+
+       if (stats) {
+          stats.innerHTML = `المؤشر الحالي يحتوي على <strong class="text-indigo-900 font-bold">${procs.size}</strong> إجراء و <strong class="text-indigo-900 font-bold">${matching.length}</strong> أسئلة تابعة له. سيتم تحديث مسماها جميعاً بالاسم الجديد.`;
+       }
+    }
+
+    function closeRenameIndicatorModal() {
+       const modal = el('rename-indicator-modal');
+       if (modal) modal.classList.add('hidden');
+    }
+
+    function saveRenamedIndicator() {
+       const select = el('rename-ind-select');
+       const input = el('rename-ind-new-name');
+       const updateHistBox = el('rename-ind-update-history');
+       if (!select || !input) return;
+
+       const oldName = (select.value || '').trim();
+       const newName = (input.value || '').trim();
+       const updateHistorical = updateHistBox ? updateHistBox.checked : true;
+
+       if (!oldName) {
+          alert('يرجى اختيار المؤشر المراد تعديل اسمه.');
+          return;
+       }
+       if (!newName) {
+          alert('يرجى إدخال اسم المؤشر الجديد.');
+          input.focus();
+          return;
+       }
+       if (oldName === newName) {
+          alert('الاسم الجديد مطابق للاسم الحالي. يرجى إدخال اسم مختلف.');
+          input.focus();
+          return;
+       }
+
+       if (!confirm(`هل أنت متأكد من تغيير اسم المؤشر من "${oldName}" إلى "${newName}"؟`)) {
+          return;
+       }
+
+       loading(true);
+
+       // 1. Update in-memory config first
+       (config.indicators || []).forEach(item => {
+          if ((item.indicator || '').trim() === oldName) {
+             item.indicator = newName;
+          }
+       });
+
+       if (config.indicator_targets) {
+          if (config.indicator_targets[oldName] !== undefined) {
+             config.indicator_targets[newName] = config.indicator_targets[oldName];
+             delete config.indicator_targets[oldName];
+          }
+       }
+
+       // 2. Persist to server via API
+       google.script.run
+          .withSuccessHandler(res => {
+             loading(false);
+             closeRenameIndicatorModal();
+             renderKpiList();
+             renderTargetsList();
+             fillDropdowns();
+             const histMsg = updateHistorical ? ' وتحديث السجلات السابقة بقاعدة البيانات.' : '.';
+             alert(`تم تعديل اسم المؤشر بنجاح إلى "${newName}"${histMsg}`);
+          })
+          .withFailureHandler(err => {
+             loading(false);
+             alert('خطأ أثناء تعديل اسم المؤشر: ' + err);
+          })
+          .renameIndicator(oldName, newName, updateHistorical);
+    }
+
+    // --- Add Procedure Modal Logic (إضافة إجراء جديد للمؤشر والتقارير) ---
+    function openAddProcedureModal(targetIndName) {
+       const select = el('modal-proc-ind-select');
+       if (!select) return;
+       select.innerHTML = '';
+
+       const rawList = config.indicators || [];
+       const uniqueInds = [...new Set(rawList.map(i => (i.indicator || '').trim()).filter(Boolean))];
+
+       if (uniqueInds.length === 0) {
+          alert('يرجى إضافة مؤشر أولاً قبل إضافة إجراء.');
+          return;
+       }
+
+       uniqueInds.forEach(ind => {
+          const opt = document.createElement('option');
+          opt.value = ind;
+          opt.textContent = ind;
+          if (targetIndName && ind === targetIndName) opt.selected = true;
+          select.appendChild(opt);
+       });
+
+       el('modal-proc-name').value = '';
+       el('modal-proc-question').value = '';
+       el('modal-proc-note').value = '';
+       el('modal-proc-add-to-reports').checked = true;
+
+       const modal = el('add-procedure-modal');
+       if (modal) modal.classList.remove('hidden');
+       setTimeout(() => {
+          const procInp = el('modal-proc-name');
+          if (procInp) procInp.focus();
+       }, 50);
+    }
+
+    function closeAddProcedureModal() {
+       const modal = el('add-procedure-modal');
+       if (modal) modal.classList.add('hidden');
+    }
+
+    function saveNewProcedureFromModal() {
+       const ind = (el('modal-proc-ind-select').value || '').trim();
+       const proc = (el('modal-proc-name').value || '').trim();
+       const question = (el('modal-proc-question').value || '').trim();
+       const note = (el('modal-proc-note').value || '').trim();
+       const addToReports = el('modal-proc-add-to-reports').checked;
+
+       if (!ind) {
+          alert('يرجى تحديد المؤشر.');
+          return;
+       }
+       if (!proc) {
+          alert('يرجى إدخال اسم الإجراء الجديد.');
+          el('modal-proc-name').focus();
+          return;
+       }
+       if (!question) {
+          alert('يرجى إدخال السؤال الأول التابع لهذا الإجراء.');
+          el('modal-proc-question').focus();
+          return;
+       }
+
+       loading(true);
+       google.script.run
+          .withSuccessHandler(res => {
+             loading(false);
+             if (!config.indicators) config.indicators = [];
+             config.indicators.push({
+                indicator: ind,
+                procedure: proc,
+                question: question,
+                note: note,
+                cats: [],
+                depts: []
+             });
+
+             closeAddProcedureModal();
+             renderKpiList();
+             renderTargetsList();
+             updateDatalists();
+             fillDropdowns();
+             rawReportsList = [];
+
+             const repMsg = res && res.addedToSessionsCount ? ` وتمت إضافته في ${res.addedToSessionsCount} جلسة/تقرير للمؤشر بالنتائج المحفوظة.` : ' وتمت إضافته للنتائج المحفوظة.';
+             alert(`تمت إضافة الإجراء "${proc}" بنجاح${repMsg}`);
+
+             if (!el('report').classList.contains('hidden')) {
+                loadReportsList();
+             }
+          })
+          .withFailureHandler(err => {
+             loading(false);
+             alert('خطأ أثناء إضافة الإجراء: ' + err);
+          })
+          .addProcedureToIndicator(ind, proc, question, note, addToReports);
+    }
+
+    // --- General Selection Editor (Categories & Departments) ---
+    function openSelectionEditor(type, idx) {
+        editState = { idx, type };
+        const targetKpi = config.indicators[idx];
+        const assigned = (type === 'cats') ? (targetKpi.cats || []) : (targetKpi.depts || []);
+        
+        // Get available options from textarea
+        const sourceId = (type === 'cats') ? 'set-cat' : 'set-dept';
+        const allOptions = el(sourceId).value.split('\n').filter(x=>x.trim());
+        
+        const title = (type === 'cats') ? 'تحديد الفئات المختصة' : 'تحديد الأقسام المختصة';
+        el('select-modal-title').innerText = title;
+
+        const container = el('select-checkboxes');
+        container.innerHTML = '';
+        
+        if(allOptions.length === 0) {
+            container.innerHTML = `<p class="text-sm text-gray-500 col-span-2">يرجى إضافة عناصر في خانة "${type==='cats'?'الفئات':'الأقسام'}" أولاً.</p>`;
+        } else {
+            allOptions.forEach(opt => {
+                const isChecked = assigned.includes(opt);
+                const checkedAttr = isChecked ? 'checked' : '';
+                const div = document.createElement('div');
+                div.innerHTML = `
+                   <label class="flex items-center space-x-2 space-x-reverse cursor-pointer">
+                      <input type="checkbox" value="${opt}" class="w-4 h-4 text-indigo-600 border-gray-300 rounded focus:ring-indigo-500" ${checkedAttr}>
+                      <span class="text-sm text-gray-700">${opt}</span>
+                   </label>
+                `;
+                container.appendChild(div);
+            });
+        }
+        
+        show('select-modal');
+    }
+
+    function saveSelection() {
+        if(editState.idx === -1) return;
+        
+        const checkboxes = document.querySelectorAll('#select-checkboxes input[type="checkbox"]:checked');
+        const selected = Array.from(checkboxes).map(cb => cb.value);
+        
+        if (editState.type === 'cats') {
+            config.indicators[editState.idx].cats = selected;
+        } else {
+            config.indicators[editState.idx].depts = selected;
+        }
+
+        renderKpiList();
+        el('select-modal').classList.add('hidden');
+        editState = { idx: -1, type: '' };
+    }
+
+    function addManualKPI() {
+       const ind = el('new-ind-name').value.trim();
+       const proc = el('new-ind-proc').value.trim() || 'عام';
+       const q = el('new-ind-q').value.trim();
+       const note = el('new-ind-note').value.trim();
+       
+       if(!ind || !q) {
+          alert('يرجى إدخال اسم المؤشر والسؤال على الأقل.');
+          return;
+       }
+       
+       const newItem = {
+          indicator: ind,
+          procedure: proc,
+          question: q,
+          note: note,
+          cats: [], depts: []
+       };
+
+       loading(true);
+       google.script.run
+          .withSuccessHandler(res => {
+             loading(false);
+             if(!config.indicators) config.indicators = [];
+             config.indicators.push(newItem);
+             
+             // Clear question and note; keep indicator and procedure so user can rapidly add another question to the same procedure
+             el('new-ind-q').value = '';
+             el('new-ind-note').value = '';
+             el('new-ind-q').focus();
+             
+             renderKpiList();
+             renderTargetsList();
+             updateDatalists();
+             fillDropdowns();
+             rawReportsList = []; // تفريغ الذاكرة المؤقتة للتقارير لضمان التحديث الفوري
+
+             const repMsg = res && res.addedToSessionsCount ? ` وتمت إضافته في ${res.addedToSessionsCount} جلسة/تقرير للمؤشر بالنتائج المحفوظة.` : ' وتمت إضافته للنتائج المحفوظة.';
+             alert(`تمت إضافة السؤال والإجراء بنجاح${repMsg}`);
+          })
+          .withFailureHandler(err => {
+             loading(false);
+             alert('خطأ أثناء إضافة السؤال: ' + err);
+          })
+          .addProcedureItemToReports(newItem, true);
+    }
+
+    function importKPIs() {
+       const txt = el('bulk-kpi').value;
+       if(!txt.trim()) return;
+       const lines = txt.split('\n');
+       if(!config.indicators) config.indicators = [];
+       
+       let count = 0;
+       lines.forEach(line => {
+          if(!line.trim()) return;
+          
+          // Try pipe first, if single part, try tab (Excel style)
+          let parts = line.split('|');
+          if (parts.length < 2) {
+             parts = line.split('\t'); // Tab Separated
+          }
+          parts = parts.map(p => p.trim());
+          
+          if (parts.length >= 4) {
+             // 4 columns: المؤشر | الإجراء | السؤال | ملاحظة الخطأ
+             config.indicators.push({
+                indicator: parts[0],
+                procedure: parts[1] || 'عام',
+                question: parts[2],
+                note: parts[3] || '',
+                cats: [], depts: [] 
+             });
+             count++;
+          } else if (parts.length === 3) {
+             // 3 columns: المؤشر | السؤال | ملاحظة الخطأ
+             config.indicators.push({
+                indicator: parts[0],
+                procedure: 'عام',
+                question: parts[1],
+                note: parts[2] || '',
+                cats: [], depts: [] 
+             });
+             count++;
+          } else if (parts.length === 2) {
+             // 2 columns: المؤشر | السؤال
+             config.indicators.push({
+                indicator: parts[0],
+                procedure: 'عام',
+                question: parts[1],
+                note: '',
+                cats: [], depts: [] 
+             });
+             count++;
+          }
+       });
+       el('bulk-kpi').value = '';
+       renderKpiList();
+       renderTargetsList();
+       updateDatalists();
+       fillDropdowns();
+       rawReportsList = [];
+
+       // حفظ الكل في الخادم لإدراج كافة الأسئلة المستوردة في النتائج المحفوظة فوراً
+       saveConfig();
+       alert(`تم استيراد ${count} سؤال بنجاح وحفظها تلقائياً وإضافتها للنتائج المحفوظة.`);
+    }
+
+    function delKpi(indNameOrIdx, questionText) {
+       let ind = '';
+       let q = '';
+
+       if (typeof indNameOrIdx === 'number' || (typeof indNameOrIdx === 'string' && !questionText && !isNaN(Number(indNameOrIdx)))) {
+          const idx = Number(indNameOrIdx);
+          const it = (config.indicators || [])[idx];
+          if (it) {
+             ind = String(it.indicator || '').trim();
+             q = String(it.question || '').trim();
+          }
+       } else {
+          ind = String(indNameOrIdx || '').trim();
+          q = String(questionText || '').trim();
+       }
+
+       if (!ind || !q) {
+          alert('خطأ: تعذر تحديد بيانات السؤال المطلوب حذفه.');
+          return;
+       }
+
+       const confirmMsg = `هل أنت متأكد من إلغاء وحذف هذا السؤال:\n"${q}"\nالموجود في مؤشر: "${ind}"؟\n\nتنبيه هام: سيتم إلغاء السؤال وحذفه نهائياً من المؤشر ومن جميع النتائج والتقارير والجلسات المحفوظة مسبقاً في قاعدة البيانات.`;
+       if (!confirm(confirmMsg)) {
+          return;
+       }
+
+       loading(true);
+       google.script.run
+          .withSuccessHandler(res => {
+             loading(false);
+             // 1. حذف السؤال من مصفوفة الإعدادات الحالية
+             config.indicators = (config.indicators || []).filter(i => {
+                const itemInd = String(i.indicator || '').trim();
+                const itemQ = String(i.question || '').trim();
+                return !(itemInd === ind && itemQ === q);
+             });
+
+             // 2. إعادة رسم القوائم والجداول في الإعدادات
+             renderKpiList();
+             renderTargetsList();
+             updateDatalists();
+
+             // 3. تصفير الذاكرة المؤقتة للتقارير لضمان التحديث الفوري للنتائج
+             rawReportsList = [];
+
+             const deletedCount = (res && res.deletedFromReports !== undefined) ? res.deletedFromReports : 0;
+             const repMsg = deletedCount > 0 
+                ? ` وحذفه من جميع النتائج المحفوظة (${deletedCount} سجل تم حذفه من التقارير).` 
+                : ' وحذفه من المؤشر (لم تكن له نتائج مسجلة سابقاً).';
+
+             alert(`تم إلغاء السؤال بنجاح${repMsg}`);
+          })
+          .withFailureHandler(err => {
+             loading(false);
+             alert('خطأ أثناء حذف السؤال من النتائج: ' + err);
+          })
+          .deleteQuestionFromIndicator(ind, q);
+    }
+
+    function saveConfig() {
+       const indicator_targets = {};
+       document.querySelectorAll('.target-input').forEach(inp => {
+          indicator_targets[inp.getAttribute('data-ind')] = parseInt(inp.value) || 10;
+       });
+
+       const newConf = {
+          hospital_name: el('set-hospital-name').value || 'مستشفى المنيا الجامعي للعيون',
+          admin_password: el('set-pass-admin').value || 'admin',
+          manager_password: el('set-pass-manager').value || 'manager',
+          user_password: el('set-pass-user').value || 'user',
+          inspectors: el('set-insp').value.split('\n').filter(x=>x.trim()),
+          departments: el('set-dept').value.split('\n').filter(x=>x.trim()),
+          categories: el('set-cat').value.split('\n').filter(x=>x.trim()),
+          indicators: config.indicators,
+          indicator_targets: indicator_targets
+       };
+       
+       loading(true);
+       google.script.run.withSuccessHandler(() => {
+          loading(false);
+          alert('تم الحفظ');
+          loadSettings();
+       }).saveAppSettings(newConf);
+     }
+     
+     // --- Backend API Integration ---
+     let API_URL = "/api";
+     let SHEET_ID = "turso";
+     
+     if (API_URL.startsWith("%VITE") || API_URL === "") {
+         API_URL = window?.env?.VITE_API_URL || window?.env?.REACT_APP_API_URL || localStorage.getItem('KPI_API_URL') || "/api";
+     }
+     if (SHEET_ID.startsWith("%VITE") || SHEET_ID === "") {
+         SHEET_ID = window?.env?.VITE_SHEET_ID || window?.env?.REACT_APP_SHEET_ID || localStorage.getItem('KPI_SHEET_ID') || "turso";
+     }
+
+     if (API_URL && !API_URL.startsWith('http') && !API_URL.startsWith('/')) {
+         API_URL = 'https://' + API_URL;
+     }
+
+     if (typeof google === 'undefined') {
+       const mockBackend = {
+           getAppSettings: () => ({
+              inspectors:['د. تجريبي'], 
+              departments:['عناية', 'طوارئ'],
+              categories:['أطباء', 'تمريض'], 
+              indicators:[
+                 {indicator:'Hand', question:'Wash?', note:'No', cats:['أطباء'], depts:['عناية']},
+                 {indicator:'PPE', question:'Gloves?', note:'No', cats:[], depts:[]}
+              ]
+           }),
+            getSessionStatus: () => ({currentCount: 5, isFull: false, nextSession: 6, remaining: 4, previousAverage: 82, previousScoresSum: 410, previousYesCount: 41, previousTotalCount: 50}),
+           submitKpiForm: () => ({success: true}),
+           fetchKpiReport: () => ([{indicator:'Hand', department:'عناية', category:'أطباء', question:'Wash?', answer:'Yes'}]),
+           getDashboardData: (ind, mon) => ({
+              monthlyCat: { labels: ['أطباء', 'تمريض'], data: [85, 92] },
+              monthlyDept: { labels: ['عناية', 'طوارئ'], data: [75, 88] },
+              annual: { labels: ['يناير','فبراير','مارس'], data: [70, 75, 80] },
+              totalInspections: 120,
+              overallCompliance: 88
+           }),
+           fetchIndividualAssessments: () => ([{
+              date: new Date().toISOString(),
+              month: "05",
+              year: "2026",
+              indicator: "Hand",
+              name: "فادي عزت",
+              jobId: "12345",
+              score: 100,
+              notes: ""
+           }, {
+              date: new Date().toISOString(),
+              month: "05",
+              year: "2026",
+              indicator: "Hand",
+              name: "أحمد محمد",
+              jobId: "54321",
+              score: 45,
+              notes: "Wash? (No soap)<br>Gloves? (Not found)"
+           }]),
+           login: (pass) => {
+               const p = String(pass).trim();
+               if (p === 'admin' || p === '11193') return 'admin';
+               if (p === 'manager') return 'manager';
+               if (p === 'user') return 'user';
+               return null;
+           },
+           saveAppSettings: () => true,
+           renameIndicator: () => ({ success: true }),
+           renameProcedure: () => ({ success: true, updatedHistoricalCount: 0 }),
+           addProcedureToIndicator: () => ({ success: true, addedToSessionsCount: 0 }),
+           fetchAllResultsForExcel: () => ([]),
+           deleteProcedureFromIndicator: () => ({ success: true, deletedFromReports: 0 }),
+           addProcedureItemToReports: () => ({ success: true, addedToSessionsCount: 0 }),
+           deleteQuestionFromIndicator: () => ({ success: true, deletedFromReports: 0 })
+       };
+
+       const createRunner = (success, failure) => new Proxy({}, {
+         get: (target, prop) => {
+           if (prop === 'withSuccessHandler') return (cb) => createRunner(cb, failure);
+           if (prop === 'withFailureHandler') return (cb) => createRunner(success, cb);
+           return async (...args) => {
+              // If API_URL is still placeholder, use Mock
+              if (API_URL.includes("placeholder")) {
+                  console.log(`[Mock] Calling ${prop} with`, args);
+                  setTimeout(() => {
+                      try {
+                          const result = mockBackend[prop] ? mockBackend[prop](...args) : null;
+                          if(success) success(result); 
+                      } catch (e) {
+                          if(failure) failure(e);
+                      }
+                  }, 500);
+                  return;
+              }
+
+              // Actual Server Request
+              console.log(`[API] Triggering ${prop} remotely`);
+              try {
+                 if (!API_URL) {
+                     throw new Error("يرجى إعداد وتوفير VITE_API_URL أولاً.");
+                 }
+                 const response = await fetch(API_URL, {
+                    method: 'POST',
+                    body: JSON.stringify({ action: prop, args: args, sheetId: SHEET_ID })
+                 });
+                 
+                 if(!response.ok) {
+                    const text = await response.text().catch(() => "");
+                    if (response.status === 405 || response.status === 404) {
+                        throw new Error(`خطأ ${response.status} بالاتصال. يرجى التأكد من إضافة رابط VITE_API_URL بشكل صحيح.`);
+                    }
+                    throw new Error(`Network request failed. Status: ${response.status}. URL: ${API_URL}. Details: ${text}`);
+                 }
+                 
+                 const json = await response.json();
+                 if(json.success) {
+                    if(success) success(json.data);
+                 } else {
+                    console.error("API logic error:", json.error);
+                    if(failure) failure(json.error);
+                 }
+              } catch(e) {
+                 console.error("API call failed:", e);
+                 if(failure) failure(e.toString());
+                 else alert("خطأ في الاتصال بقاعدة البيانات.");
+              }
+           }
+         }
+       });
+       
+       window.google = { script: { run: createRunner(null, null) } };
+     }
+
+    // Init
+    window.onload = () => {
+        show('login-modal');
+    };
+  </script>
+<script type="module" src="/index.tsx"></script>
+</body>
+</html>
