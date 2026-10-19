@@ -113,10 +113,11 @@
         display: none !important;
       }
 
-      /* إلغاء ومنع ظهور سطر تاريخ التقرير وإجمالي بنود التقييم والمطابقات ومسؤول مكافحة العدوى نهائياً عند الطباعة */
+      /* إلغاء ومنع ظهور سطر تاريخ التقرير وإجمالي بنود التقييم والمطابقات ومسؤول مكافحة العدوى وأي توقيعات نهائياً عند الطباعة */
       .report-footer, .print-footer, .officer-signature, .report-signatures, 
       .report-officer, [id*="signature"], [class*="signature"], [class*="report-officer"],
-      .print-officer-line, .print-totals-line, .eval-summary-footer, [data-print-hide] {
+      .print-officer-line, .print-totals-line, .eval-summary-footer, [data-print-hide],
+      .dotted-line, hr.dotted, .officer-title {
         display: none !important;
         visibility: hidden !important;
         height: 0 !important;
@@ -993,7 +994,19 @@
     const el = (id) => document.getElementById(id);
     const show = (id) => el(id).classList.remove('hidden');
     const hide = (id) => el(id).classList.add('hidden');
-    const loading = (state) => state ? show('loader') : hide('loader');
+    let loadingTimer = null;
+    const loading = (state) => {
+      if (state) {
+        show('loader');
+        if (loadingTimer) clearTimeout(loadingTimer);
+        loadingTimer = setTimeout(() => {
+          hide('loader');
+        }, 7000);
+      } else {
+        if (loadingTimer) clearTimeout(loadingTimer);
+        hide('loader');
+      }
+    };
 
     function getProcedureForQuestion(qText, indName) {
        if (!config || !config.indicators) return 'عام';

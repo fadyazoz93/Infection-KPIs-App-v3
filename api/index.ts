@@ -223,7 +223,7 @@ async function getQuestionToProcedureMap(): Promise<Record<string, string>> {
   return map;
 }
 
-// دالة إضافة سؤال أو إجراء جديد إلى جميع الجلسات والنتائج المسجلة مسبقاً لهذا المؤشر
+// دالة إضافة سؤال أو إجراء جديد إلى جميع الجلسات والنتائج المسجلة مسبقاً لهذا المؤشر بضربة واحدة فائقة السرعة
 async function syncQuestionToExistingSessions(indicator: string, procedure: string, question: string): Promise<number> {
   const indTrim = String(indicator || '').trim();
   const procTrim = String(procedure || 'عام').trim();
@@ -233,127 +233,94 @@ async function syncQuestionToExistingSessions(indicator: string, procedure: stri
   const timestamp = new Date().toISOString();
   let addedCount = 0;
 
-  // 1. جلب كافة الجلسات المسجلة لهذا المؤشر في جدول النتائج kpis_data
-  const indicatorSessionsQuery = await db.execute({
-    sql: `SELECT Month, Year, COALESCE(Session_Number, 1) as Session_Number,
-                 MAX(Date) as Date, MAX(Inspector) as Inspector,
-                 MAX(Department) as Department, MAX(Category) as Category,
-                 MAX(Target_Name) as Target_Name, MAX(Target_Job_ID) as Target_Job_ID
-          FROM kpis_data 
-          WHERE TRIM(Indicator) = ? OR Indicator = ?
-          GROUP BY Month, Year, COALESCE(Session_Number, 1)`,
-    args: [indTrim, indicator]
-  });
-
-  let targetSessions = indicatorSessionsQuery.rows;
-
-  // 2. إذا لم يكن لهذا المؤشر جلسات مسجلة بعد، نجلب الشهور والجلسات المسجلة لباقي المؤشرات لربطه بها
-  if (targetSessions.length === 0) {
-    const allMonthsSessionsQuery = await db.execute({
-      sql: `SELECT Month, Year, COALESCE(Session_Number, 1) as Session_Number,
-                   MAX(Date) as Date, MAX(Inspector) as Inspector,
-                   MAX(Department) as Department, MAX(Category) as Category,
-                   MAX(Target_Name) as Target_Name, MAX(Target_Job_ID) as Target_Job_ID
-            FROM kpis_data
-            GROUP BY Month, Year, COALESCE(Session_Number, 1)`
-    });
-    targetSessions = allMonthsSessionsQuery.rows;
-  }
-
-  // 3. إذا كانت قاعدة البيانات خالية تماماً، يتم إنشاء جلسة أولية للشهر الحالي
-  if (targetSessions.length === 0) {
-    const now = new Date();
-    const currMonth = now.getMonth() + 1;
-    const currYear = now.getFullYear();
-    const currDate = `${currYear}-${("0" + currMonth).slice(-2)}-01`;
-    targetSessions = [{
-      Month: currMonth,
-      Year: currYear,
-      Session_Number: 1,
-      Date: currDate,
-      Inspector: 'مسؤول التقييم',
-      Department: '',
-      Category: '',
-      Target_Name: '',
-      Target_Job_ID: ''
-    }] as any;
-  }
-
-  // 4. لكل جلسة مسجلة، يتم التأكد من إدراج السؤال والإجراء الجديد فيها فوراً
-  for (const s of targetSessions) {
-    const m = Number(s.Month);
-    const y = Number(s.Year);
-    const sessNum = Number(s.Session_Number) || 1;
-
-    const check = await db.execute({
-      sql: `SELECT id, Procedure FROM kpis_data 
-            WHERE Month = ? AND Year = ? AND COALESCE(Session_Number, 1) = ? 
-              AND (TRIM(Indicator) = ? OR Indicator = ?) 
-              AND (TRIM(Question) = ? OR Question = ?)`,
-      args: [m, y, sessNum, indTrim, indicator, qTrim, question]
+  try {
+    // 1. إدراج السؤال والإجراء الجديد في كافة جلسات المؤشر المسجلة بضربة واحدة ذرية وسريعة
+    const batchRes = await db.execute({
+      sql: `INSERT INTO kpis_data (Date, Month, Year, Inspector, Department, Category, Session_Number, Indicator, Procedure, Question, Answer, Note, Timestamp, Target_Name, Target_Job_ID)
+            SELECT 
+              COALESCE(s.Date, s.Year || '-' || substr('0' || s.Month, -2) || '-01'),
+              s.Month, s.Year,
+              COALESCE(s.Inspector, 'مسؤول التقييم'),
+              COALESCE(s.Department, ''),
+              COALESCE(s.Category, ''),
+              COALESCE(s.Session_Number, 1),
+              ?, ?, ?, 'Yes', '', ?,
+              COALESCE(s.Target_Name, ''),
+              COALESCE(s.Target_Job_ID, '')
+            FROM (
+              SELECT Month, Year, COALESCE(Session_Number, 1) as Session_Number,
+                     MAX(Date) as Date, MAX(Inspector) as Inspector,
+                     MAX(Department) as Department, MAX(Category) as Category,
+                     MAX(Target_Name) as Target_Name, MAX(Target_Job_ID) as Target_Job_ID
+              FROM kpis_data
+              WHERE TRIM(Indicator) = ? OR Indicator = ?
+              GROUP BY Month, Year, COALESCE(Session_Number, 1)
+            ) s
+            WHERE NOT EXISTS (
+              SELECT 1 FROM kpis_data ex
+              WHERE ex.Month = s.Month 
+                AND ex.Year = s.Year 
+                AND COALESCE(ex.Session_Number, 1) = s.Session_Number
+                AND (TRIM(ex.Indicator) = ? OR ex.Indicator = ?)
+                AND (TRIM(ex.Question) = ? OR ex.Question = ?)
+            )`,
+      args: [indTrim, procTrim, qTrim, timestamp, indTrim, indicator, indTrim, indicator, qTrim, question]
     });
 
-    if (check.rows.length === 0) {
-      await db.execute({
-        sql: `INSERT INTO kpis_data (
-          Date, Month, Year, Inspector, Department, Category,
-          Session_Number, Indicator, Procedure, Question, Answer, Note, Timestamp,
-          Target_Name, Target_Job_ID
-        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'Yes', '', ?, ?, ?)`,
-        args: [
-          s.Date || `${y}-${("0" + m).slice(-2)}-01`,
-          m,
-          y,
-          s.Inspector || 'مسؤول التقييم',
-          s.Department || '',
-          s.Category || '',
-          sessNum,
-          indTrim,
-          procTrim,
-          qTrim,
-          timestamp,
-          s.Target_Name || '',
-          s.Target_Job_ID || ''
-        ]
+    addedCount = batchRes.rowsAffected || 0;
+
+    // 2. إذا لم يكن لهذا المؤشر جلسات مسجلة بعد، نجلب الشهور المسجلة لباقي المؤشرات
+    if (addedCount === 0) {
+      const fallbackCheck = await db.execute({
+        sql: `SELECT COUNT(*) as count FROM kpis_data WHERE TRIM(Indicator) = ? OR Indicator = ?`,
+        args: [indTrim, indicator]
       });
-      addedCount++;
-    } else {
-      // إذا كان السؤال موجوداً ولكن اسم الإجراء بحاجة للتحديث
-      const rowId = check.rows[0].id;
-      const curProc = String(check.rows[0].Procedure || '').trim();
-      if (!curProc || curProc === 'عام' || curProc !== procTrim) {
-        await db.execute({
-          sql: `UPDATE kpis_data SET Procedure = ? WHERE id = ?`,
-          args: [procTrim, rowId]
+
+      if (Number(fallbackCheck.rows[0].count) === 0) {
+        const otherRes = await db.execute({
+          sql: `INSERT INTO kpis_data (Date, Month, Year, Inspector, Department, Category, Session_Number, Indicator, Procedure, Question, Answer, Note, Timestamp, Target_Name, Target_Job_ID)
+                SELECT 
+                  COALESCE(s.Date, s.Year || '-' || substr('0' || s.Month, -2) || '-01'),
+                  s.Month, s.Year,
+                  COALESCE(s.Inspector, 'مسؤول التقييم'),
+                  COALESCE(s.Department, ''),
+                  COALESCE(s.Category, ''),
+                  COALESCE(s.Session_Number, 1),
+                  ?, ?, ?, 'Yes', '', ?,
+                  '', ''
+                FROM (
+                  SELECT Month, Year, 1 as Session_Number,
+                         MAX(Date) as Date, MAX(Inspector) as Inspector,
+                         MAX(Department) as Department, MAX(Category) as Category
+                  FROM kpis_data
+                  GROUP BY Month, Year
+                ) s
+                WHERE NOT EXISTS (
+                  SELECT 1 FROM kpis_data ex
+                  WHERE ex.Month = s.Month 
+                    AND ex.Year = s.Year 
+                    AND (TRIM(ex.Indicator) = ? OR ex.Indicator = ?)
+                    AND (TRIM(ex.Question) = ? OR ex.Question = ?)
+                )`,
+          args: [indTrim, procTrim, qTrim, timestamp, indTrim, indicator, qTrim, question]
         });
+        addedCount = otherRes.rowsAffected || 0;
       }
     }
-  }
-  return addedCount;
-}
 
-// دالة التحقق الشامل ومزامنة كافة الأسئلة والإجراءات في الإعدادات مع النتائج المحفوظة
-async function syncAllConfiguredQuestionsToReports(): Promise<number> {
-  try {
-    const settings = await getAppSettingsInternal();
-    const indicators = settings.indicators || [];
-    if (!Array.isArray(indicators) || indicators.length === 0) return 0;
-
-    let totalAdded = 0;
-    for (const item of indicators) {
-      const ind = String(item.indicator || '').trim();
-      const proc = String(item.procedure || 'عام').trim();
-      const q = String(item.question || '').trim();
-      if (!ind || !q) continue;
-
-      const added = await syncQuestionToExistingSessions(ind, proc, q);
-      totalAdded += added;
-    }
-    return totalAdded;
+    // 3. تحديث اسم الإجراء إذا كان مسجلاً كـ 'عام' أو فارغاً
+    await db.execute({
+      sql: `UPDATE kpis_data SET Procedure = ? 
+            WHERE (TRIM(Indicator) = ? OR Indicator = ?) 
+              AND (TRIM(Question) = ? OR Question = ?) 
+              AND (Procedure IS NULL OR TRIM(Procedure) = '' OR TRIM(Procedure) = 'عام')`,
+      args: [procTrim, indTrim, indicator, qTrim, question]
+    });
   } catch (err) {
-    console.error("Error in syncAllConfiguredQuestionsToReports:", err);
-    return 0;
+    console.error("Error in syncQuestionToExistingSessions:", err);
   }
+
+  return addedCount;
 }
 
 // دالة حذف وإلغاء سؤال نهائياً من جميع النتائج وسجلات التقييم المحفوظة في قاعدة البيانات
@@ -386,7 +353,33 @@ async function removeQuestionFromExistingSessions(indicator: string, question: s
   return delRes.rowsAffected || 0;
 }
 
+let lastSyncedTime = 0;
 
+// دالة مزامنة كافة الأسئلة والإجراءات المعرفة بالإعدادات مع النتائج والجلسات المسجلة
+async function syncAllConfiguredQuestionsToReports(force = false): Promise<void> {
+  const now = Date.now();
+  // تجنب تكرار المزامنة الثقيلة إذا تمت خلال آخر 30 ثانية لتسريع استجابة الخادم
+  if (!force && now - lastSyncedTime < 30000) {
+    return;
+  }
+  try {
+    const settings = await getAppSettingsInternal();
+    const indicators = settings.indicators || [];
+    if (!Array.isArray(indicators) || indicators.length === 0) return;
+
+    for (const item of indicators) {
+      const ind = String(item.indicator || '').trim();
+      const proc = String(item.procedure || 'عام').trim();
+      const q = String(item.question || '').trim();
+      if (ind && q) {
+        await syncQuestionToExistingSessions(ind, proc, q);
+      }
+    }
+    lastSyncedTime = now;
+  } catch (err) {
+    console.error("Error in syncAllConfiguredQuestionsToReports:", err);
+  }
+}
 
 // دالة المعالجة الرئيسية للـ API
 export default async function handler(req: any, res: any) {
@@ -414,7 +407,6 @@ export default async function handler(req: any, res: any) {
 
     switch (action) {
       case 'getAppSettings':
-        await syncAllConfiguredQuestionsToReports();
         result = await getAppSettingsInternal();
         break;
 
