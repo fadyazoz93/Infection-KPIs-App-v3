@@ -22,85 +22,97 @@
     @media print {
       @page {
         size: A4 portrait;
-        margin: 8mm 8mm 8mm 8mm; /* Compact margins to maximize A4 space */
+        margin: 6mm 8mm 6mm 8mm; /* Compact margins to maximize A4 space and avoid blank extra pages */
       }
       
       .no-print { display: none !important; }
       
-      body { 
+      html, body { 
+        height: auto !important;
+        min-height: 0 !important;
+        max-height: none !important;
         background-color: white !important; 
         margin: 0 !important; 
         padding: 0 !important;
+        overflow: visible !important;
         -webkit-print-color-adjust: exact !important;
         print-color-adjust: exact !important;
       }
       
-      #main-content { 
+      #main-content, #report, #rep-content, #rep-tables { 
         background-color: white !important; 
         margin: 0 !important; 
-        padding: 0 !important;
-        width: 100% !important;
-        overflow: visible !important;
-      }
-      
-      #rep-content {
-        display: block !important;
+        padding: 0 !important; 
         width: 100% !important;
         max-width: 100% !important;
-        margin: 0 !important;
-        padding: 0 !important;
+        min-height: 0 !important;
+        max-height: none !important;
+        overflow: visible !important;
         box-shadow: none !important;
         border: none !important;
+        gap: 0 !important;
       }
 
-      .shadow-md, .shadow-lg, .shadow-sm, .shadow { box-shadow: none !important; }
+      .shadow-md, .shadow-lg, .shadow-sm, .shadow, .shadow-2xs { box-shadow: none !important; }
       
-      /* Multi-page report separation: each selected indicator report on a single separate page */
+      /* Single page indicator report - strictly fits on 1 page without trailing blank pages */
       .report-print-page {
-        display: flex !important;
-        flex-direction: column !important;
+        display: block !important;
         width: 100% !important;
-        min-height: 250mm !important;
-        max-height: 275mm !important; /* Strictly fits within 1 A4 page */
-        page-break-before: auto !important;
-        page-break-after: always !important;
-        break-after: page !important;
+        min-height: 0 !important;
+        max-height: none !important;
+        margin: 0 !important;
+        padding: 0 !important;
+        border: none !important;
+        box-shadow: none !important;
+        background: white !important;
         page-break-inside: avoid !important;
         break-inside: avoid !important;
+        page-break-after: avoid !important;
+        break-after: avoid !important;
         box-sizing: border-box !important;
-        margin: 0 !important;
-        padding: 4mm 0 !important;
-        overflow: hidden !important;
       }
 
-      .report-print-page:last-child {
-        page-break-after: auto !important;
-        break-after: auto !important;
+      /* Multi-page separation: Only break page between consecutive reports, never after the last one */
+      .report-print-page + .report-print-page {
+        page-break-before: always !important;
+        break-before: page !important;
+        page-break-after: avoid !important;
+        break-after: avoid !important;
+        margin-top: 0 !important;
       }
 
       .print-header {
         page-break-inside: avoid !important;
         break-inside: avoid !important;
-        margin-bottom: 6px !important;
-        padding-bottom: 6px !important;
+        margin-bottom: 4px !important;
+        padding-bottom: 4px !important;
       }
 
       /* Compact table typography for print */
       .report-table {
         width: 100% !important;
         border-collapse: collapse !important;
-        font-size: 8.5pt !important;
+        font-size: 8pt !important;
+        page-break-inside: avoid !important;
+        break-inside: avoid !important;
       }
       .report-table th, .report-table td {
-        padding: 4px 6px !important;
-        font-size: 8.5pt !important;
+        padding: 3px 5px !important;
+        font-size: 8pt !important;
         line-height: 1.25 !important;
-        border: 1px solid #cbd5e1 !important;
+        border: 1px solid #94a3b8 !important;
       }
       .report-table thead th {
         background-color: #f1f5f9 !important;
         color: #0f172a !important;
+        font-weight: 800 !important;
+      }
+      .report-table td[rowspan] {
+        vertical-align: middle !important;
+        background-color: #f8fafc !important;
         font-weight: bold !important;
+        text-align: right !important;
       }
 
       /* Typography adjustments for print */
@@ -2766,21 +2778,58 @@
           const questionsList = Object.values(questionStats);
           const hasQuestions = questionsList.length > 0;
 
+          // Preserve procedure ordering defined in config if available
+          const procOrderIndex = new Map();
+          if (config && Array.isArray(config.indicators)) {
+             let pOrder = 0;
+             config.indicators.forEach(item => {
+                if (item && String(item.indicator || '').trim() === indName) {
+                   const p = String(item.procedure || 'عام').trim();
+                   if (!procOrderIndex.has(p)) {
+                      procOrderIndex.set(p, pOrder++);
+                   }
+                }
+             });
+          }
+
+          // Sort questions: first by configured procedure order, then alphabetically by procedure, then question
+          const sortedQuestions = [...questionsList].sort((a, b) => {
+             const pA = String(a.procedure || 'عام').trim();
+             const pB = String(b.procedure || 'عام').trim();
+             if (pA !== pB) {
+                const idxA = procOrderIndex.has(pA) ? procOrderIndex.get(pA) : 999;
+                const idxB = procOrderIndex.has(pB) ? procOrderIndex.get(pB) : 999;
+                if (idxA !== idxB) return idxA - idxB;
+                return pA.localeCompare(pB, 'ar');
+             }
+             return String(a.question || '').trim().localeCompare(String(b.question || '').trim(), 'ar');
+          });
+
+          // Group questions by Procedure for rowspan cell merging (دمج خلايا الإجراء المكررة في خلية واحدة)
+          const procGroupsMap = new Map();
+          sortedQuestions.forEach(qObj => {
+             const pName = String(qObj.procedure || 'عام').trim() || 'عام';
+             if (!procGroupsMap.has(pName)) {
+                procGroupsMap.set(pName, []);
+             }
+             procGroupsMap.get(pName).push(qObj);
+          });
+
           // Report Subtitle for this individual report
           const monthText = group.month ? ` - شهر: ${group.month}` : '';
           const singleReportHeaderTitle = `تقرير مؤشر: ${indName}${monthText}`;
 
           let pageHtml = `
-             <div class="report-print-page bg-white p-4 md:p-6 rounded-lg shadow-sm border border-gray-200 mb-6">
+             <div class="report-print-page bg-white p-4 md:p-6 rounded-lg shadow-sm border border-gray-200 mb-6 print:m-0 print:p-0 print:border-none print:shadow-none">
                 
                 <!-- Official Print Header (No app logo for print/PDF) -->
                 <div class="border-b-2 border-indigo-900 pb-2 mb-3 text-center print-header">
                    <h1 class="text-lg md:text-xl font-black text-gray-900">${hospitalName}</h1>
                    <p class="text-xs text-gray-600 mt-0.5">وحدة مكافحة العدوى - تقرير مؤشرات الأداء</p>
-                   <div class="mt-2 flex flex-wrap items-center justify-between gap-2 text-xs font-bold text-indigo-950 bg-indigo-50/90 px-3 py-1.5 rounded border border-indigo-200 shadow-2xs">
+                   <div class="mt-2 flex flex-wrap items-center justify-between gap-2 text-xs font-bold text-indigo-950 bg-indigo-50/90 px-3 py-1.5 rounded border border-indigo-200 shadow-2xs print:mt-1 print:py-1 print:px-2 print:text-[10px]">
                       <span class="flex items-center gap-1.5">
                          <span class="text-gray-500 font-normal">المؤشر:</span>
-                         <strong class="text-indigo-900 font-black text-sm">${indName}</strong>
+                         <strong class="text-indigo-900 font-black text-sm print:text-xs">${indName}</strong>
                       </span>
                       <span class="flex items-center gap-1.5">
                          <span class="text-gray-500 font-normal">الشهر:</span>
@@ -2796,44 +2845,50 @@
                 </div>
 
                 <!-- Questions Evaluation Breakdown Table (جدول: الإجراء | السؤال | النسبة) -->
-                <div class="flex-1 overflow-x-auto mb-3">
-                   <table class="report-table w-full border-collapse border border-gray-300 text-xs shadow-2xs rounded overflow-hidden">
+                <div class="flex-1 overflow-x-auto mb-3 print:m-0 print:overflow-visible">
+                   <table class="report-table w-full border-collapse border border-gray-300 text-xs shadow-2xs rounded overflow-hidden print:shadow-none print:rounded-none">
                       <thead class="bg-indigo-50/95 text-indigo-950 font-black border-b border-gray-300">
                          <tr>
-                            <th class="border border-gray-300 py-2 px-3 text-right text-xs font-black w-[28%] bg-indigo-50/90">الإجراء</th>
-                            <th class="border border-gray-300 py-2 px-3 text-right text-xs font-black bg-indigo-50/90">السؤال</th>
-                            <th class="border border-gray-300 py-2 px-2 text-center text-xs font-black w-24 bg-indigo-50/90">النسبة</th>
+                            <th class="border border-gray-300 py-2 px-3 text-right text-xs font-black w-[28%] bg-indigo-50/90 print:bg-slate-100">الإجراء</th>
+                            <th class="border border-gray-300 py-2 px-3 text-right text-xs font-black bg-indigo-50/90 print:bg-slate-100">السؤال</th>
+                            <th class="border border-gray-300 py-2 px-2 text-center text-xs font-black w-24 bg-indigo-50/90 print:bg-slate-100">النسبة</th>
                          </tr>
                       </thead>
                       <tbody>
-                         ${questionsList.length === 0 ? `
+                         ${procGroupsMap.size === 0 ? `
                             <tr>
                                <td colspan="3" class="border border-gray-300 p-4 text-center text-gray-500">لا توجد بنود تقييم مسجلة لهذا المؤشر</td>
                             </tr>
-                         ` : questionsList.sort((a, b) => (a.procedure || '').localeCompare(b.procedure || '', 'ar')).map(qObj => {
-                            const validCount = qObj.valid;
-                            const yesCount = qObj.yes;
-                            const pct = validCount > 0 ? Math.round((yesCount / validCount) * 100) : 0;
-                            const pctText = validCount > 0 ? `${pct}%` : '---';
-                            const clr = validCount === 0 ? 'text-gray-400' : (pct >= 80 ? 'text-green-700 font-bold' : (pct >= 50 ? 'text-amber-700 font-bold' : 'text-red-700 font-bold'));
-                            const bg = validCount === 0 ? 'bg-gray-50/40' : (pct >= 80 ? 'bg-green-50/40' : (pct >= 50 ? 'bg-amber-50/40' : 'bg-red-50/40'));
+                         ` : Array.from(procGroupsMap.entries()).map(([pName, pQuestions]) => {
+                            const groupCount = pQuestions.length;
+                            return pQuestions.map((qObj, itemIdx) => {
+                               const validCount = qObj.valid;
+                               const yesCount = qObj.yes;
+                               const pct = validCount > 0 ? Math.round((yesCount / validCount) * 100) : 0;
+                               const pctText = validCount > 0 ? `${pct}%` : '---';
+                               const clr = validCount === 0 ? 'text-gray-400' : (pct >= 80 ? 'text-green-700 font-bold' : (pct >= 50 ? 'text-amber-700 font-bold' : 'text-red-700 font-bold'));
+                               const bg = validCount === 0 ? 'bg-gray-50/40' : (pct >= 80 ? 'bg-green-50/40' : (pct >= 50 ? 'bg-amber-50/40' : 'bg-red-50/40'));
+                               const isFirst = itemIdx === 0;
 
-                            return `
-                               <tr class="border-b border-gray-200 hover:bg-slate-50 transition">
-                                  <td class="border border-gray-300 py-1.5 px-3 font-bold text-gray-800 text-[11px] bg-slate-50/60 align-top">
-                                     <div class="flex items-center gap-1.5">
-                                        <i class="fas fa-stethoscope text-indigo-400 text-[10px] no-print"></i>
-                                        <span>${qObj.procedure || 'عام'}</span>
-                                     </div>
-                                  </td>
-                                  <td class="border border-gray-300 py-1.5 px-3 text-gray-900 text-[11px] leading-snug align-top">
-                                     ${qObj.question}
-                                  </td>
-                                  <td class="border border-gray-300 py-1.5 px-2 text-center font-black ${clr} ${bg} text-xs align-middle">
-                                     ${pctText}
-                                  </td>
-                               </tr>
-                            `;
+                               return `
+                                  <tr class="border-b border-gray-200 hover:bg-slate-50 transition print:hover:bg-transparent">
+                                     ${isFirst ? `
+                                        <td rowspan="${groupCount}" class="border border-gray-300 py-2 px-3 font-bold text-indigo-950 text-[11px] bg-slate-50/90 align-middle text-right print:bg-slate-50 print:text-[10px]">
+                                           <div class="flex items-center gap-1.5 font-bold">
+                                              <i class="fas fa-stethoscope text-indigo-400 text-[10px] no-print"></i>
+                                              <span>${pName}</span>
+                                           </div>
+                                        </td>
+                                     ` : ''}
+                                     <td class="border border-gray-300 py-1.5 px-3 text-gray-900 text-[11px] leading-snug align-middle print:text-[10px] print:py-1">
+                                        ${qObj.question}
+                                     </td>
+                                     <td class="border border-gray-300 py-1.5 px-2 text-center font-black ${clr} ${bg} text-xs align-middle print:text-[10px] print:py-1">
+                                        ${pctText}
+                                     </td>
+                                  </tr>
+                               `;
+                            }).join('');
                          }).join('')}
                       </tbody>
                    </table>
