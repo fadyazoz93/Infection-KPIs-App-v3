@@ -1,3 +1,32 @@
+/**
+ * ============================================================================
+ * مواصفات التصميم المعماري لتحسين استهلاك قاعدة البيانات وضمان الترشيد
+ * Database Optimization & Architecture Guidelines
+ * ============================================================================
+ * الهدف: منع الاستنزاف المفرط للقراءات السحابية (Row Reads Exhaustion) وضمان بقاء
+ *       التطبيق ضمن الحدود المجانية المستقرة لقواعد البيانات السحابية (مثل Turso).
+ * 
+ * 1. تصميم مخطط قاعدة البيانات (Schema & Indexing Architecture):
+ *    - الفهارس الإلزامية (Mandatory Indexing) على أعمدة WHERE و ORDER BY و JOIN.
+ *    - منع المسح الكامل للجداول (No Full Table Scans) عبر الفهارس المخصصة.
+ * 
+ * 2. معمارية طبقة التخزين المؤقت (In-Memory Cache-Aside Pattern):
+ *    - عزل الاستدعاء المباشر وفحص In-Memory Cache أولاً (0 قراءات سحابية عند Cache Hit).
+ *    - تعيين وقت انتهاء صلاحية محدد (TTL) يتناسب مع كل نوع بيانات مع تفريغ ذكي.
+ * 
+ * 3. هيكلة الاستعلامات وضوابط الجلب (Query Optimization & Governance):
+ *    - حظر الجلب العشوائي ومنع استخدام SELECT * نهائياً، وتحديد الحقول المطلوبة فقط.
+ *    - تقييد النتائج والصفحات باستخدام LIMIT والتجميع المباشر عبر محرك SQL.
+ * 
+ * 4. سياسة الاتصال والمزامنة (Event-Driven vs. Polling Control):
+ *    - منع الفحص الحلقي السريع (No Rapid Polling) واستبداله بـ Debounce والأحداث.
+ *    - إلغاء الاستعلامات المتكررة غير الضرورية في دوال القراءة.
+ * 
+ * 5. التحديث المتفائل ومزامنة الحالة (Optimistic Updates & Local Mutation):
+ *    - منع إعادة القراءة بعد الكتابة، وتحديث الذاكرة والكاش محلياً فور الإضافة/التعديل.
+ * ============================================================================
+ */
+
 import type { IncomingMessage, ServerResponse } from "http";
 import { db, resetDb } from "./lib/db.js";
 import fs from "fs";
@@ -85,6 +114,21 @@ async function ensureInitialized(retryCount = 0) {
       await db.execute("ALTER TABLE kpis_data ADD COLUMN Procedure TEXT");
     } catch {
       // Column already exists
+    }
+
+    // 3b. إنشاء فهارس سريعة (Indexes) لمنع الفحص الكامل للجداول (Full Table Scan)
+    try {
+      await db.execute("CREATE INDEX IF NOT EXISTS idx_kpis_data_month_year ON kpis_data (Month, Year);");
+      await db.execute("CREATE INDEX IF NOT EXISTS idx_kpis_data_month_year_ind ON kpis_data (Month, Year, Indicator);");
+      await db.execute("CREATE INDEX IF NOT EXISTS idx_kpis_data_indicator ON kpis_data (Indicator);");
+      await db.execute("CREATE INDEX IF NOT EXISTS idx_kpis_data_ind_year ON kpis_data (Indicator, Year);");
+      await db.execute("CREATE INDEX IF NOT EXISTS idx_kpis_data_ind_proc ON kpis_data (Indicator, Procedure);");
+      await db.execute("CREATE INDEX IF NOT EXISTS idx_kpis_data_ind_q ON kpis_data (Indicator, Question);");
+      await db.execute("CREATE INDEX IF NOT EXISTS idx_kpis_data_session ON kpis_data (Month, Year, Indicator, Session_Number);");
+      await db.execute("CREATE INDEX IF NOT EXISTS idx_kpis_data_target ON kpis_data (Target_Name, Target_Job_ID);");
+      await db.execute("CREATE INDEX IF NOT EXISTS idx_kpis_data_date ON kpis_data (Date);");
+    } catch (idxErr) {
+      console.warn("Index creation notice:", idxErr);
     }
 
     // 4. إذا كان جدول البيانات kpis_data فارغاً، يتم بذر نتائج وجلسات تقييم أولية للشهر الحالي والسابق
@@ -185,9 +229,65 @@ async function getRequestBody(req: any): Promise<any> {
   });
 }
 
-// دالة داخلية لجلب الإعدادات
-async function getAppSettingsInternal() {
-  const rows = await db.execute("SELECT * FROM kpis_settings");
+// ============================================================================
+// نظام التخزين المؤقت في الذاكرة (In-Memory Caching) لترشيد قراءة قاعدة البيانات
+// ============================================================================
+interface CacheEntry<T> {
+  data: T;
+  timestamp: number;
+}
+
+// 1. التخزين المؤقت للإعدادات (Settings Cache) - البيانات الثابتة نادراً ما تتغير
+let cachedSettings: any = null;
+let cachedSettingsTime = 0;
+const SETTINGS_CACHE_TTL = 10 * 60 * 1000; // 10 دقائق
+
+// 2. التخزين المؤقت لخريطة الإجراءات (Procedure Map Cache) في الذاكرة بدون استعلام
+let cachedProcMap: Record<string, string> | null = null;
+
+// 3. التخزين المؤقت لملخص التقارير (Reports Summary Cache)
+export const summaryCache = new Map<string, CacheEntry<any[]>>();
+const SUMMARY_CACHE_TTL = 2 * 60 * 1000; // دقيقتان
+
+// 4. التخزين المؤقت لحالة الجلسة (Session Status Cache)
+export const sessionStatusCache = new Map<string, CacheEntry<any>>();
+const SESSION_STATUS_TTL = 30 * 1000; // 30 ثانية
+
+// 5. التخزين المؤقت للوحة المؤشرات (Dashboard Cache)
+export const dashboardCache = new Map<string, CacheEntry<any>>();
+const DASHBOARD_CACHE_TTL = 2 * 60 * 1000; // دقيقتان
+
+// دالة تفريغ وتحديث كاش البيانات عند حدوث عمليات كتابة جديدة (Invalidate on Write)
+export function invalidateKpiDataCaches(indicator?: string, _month?: number, _year?: number) {
+  summaryCache.clear();
+  sessionStatusCache.clear();
+  if (indicator) {
+    for (const key of dashboardCache.keys()) {
+      if (key.startsWith(`${indicator}___`)) {
+        dashboardCache.delete(key);
+      }
+    }
+  } else {
+    dashboardCache.clear();
+  }
+}
+
+// تحديث الإعدادات في الذاكرة محلياً بشكل فوري
+export function updateCachedSettingsInMemory(newSettings: any) {
+  cachedSettings = { ...(cachedSettings || {}), ...newSettings };
+  cachedSettingsTime = Date.now();
+  cachedProcMap = null; // إعادة بناء الخريطة عند الطلب القادم من الذاكرة
+}
+
+// دالة داخلية لجلب الإعدادات مع الترشيد الأقصى (In-Memory Cache + Selective Query)
+async function getAppSettingsInternal(forceRefresh = false) {
+  const now = Date.now();
+  if (!forceRefresh && cachedSettings && (now - cachedSettingsTime < SETTINGS_CACHE_TTL)) {
+    return cachedSettings;
+  }
+
+  // طلب الأعمدة المطلوبة فقط (SELECT key, value) مع LIMIT بدلاً من SELECT *
+  const rows = await db.execute("SELECT key, value FROM kpis_settings LIMIT 100");
   const settings: any = {};
   for (const r of rows.rows) {
     const key = r.key as string;
@@ -204,11 +304,17 @@ async function getAppSettingsInternal() {
   if (!settings.user_password) settings.user_password = 'user';
   if (!settings.hospital_name) settings.hospital_name = 'مستشفى المنيا الجامعي للعيون';
   
+  cachedSettings = settings;
+  cachedSettingsTime = now;
+  cachedProcMap = null;
   return settings;
 }
 
-// بناء خريطة لربط كل سؤال بإجرائه التابع له في المؤشر
+// بناء خريطة لربط كل سؤال بإجرائه التابع له في الذاكرة دون استعلامات متكررة
 async function getQuestionToProcedureMap(): Promise<Record<string, string>> {
+  if (cachedProcMap) {
+    return cachedProcMap;
+  }
   const settings = await getAppSettingsInternal();
   const map: Record<string, string> = {};
   const inds = settings.indicators || [];
@@ -220,6 +326,7 @@ async function getQuestionToProcedureMap(): Promise<Record<string, string>> {
       map[`${ind}___${q}`] = proc;
     }
   }
+  cachedProcMap = map;
   return map;
 }
 
@@ -489,9 +596,19 @@ export default async function handler(req: any, res: any) {
         const dateObj = new Date(dateStr);
         const m = dateObj.getMonth() + 1;
         const y = dateObj.getFullYear();
+        const cacheKey = `${y}-${m}___${indicator}`;
+        const now = Date.now();
 
+        // فحص الذاكرة المؤقتة أولاً لتجنب استعلام قاعدة البيانات المتكرر
+        const cached = sessionStatusCache.get(cacheKey);
+        if (cached && (now - cached.timestamp < SESSION_STATUS_TTL)) {
+          result = cached.data;
+          break;
+        }
+
+        // استعلام محدد الأعمدة فقط مع استخدام الفهرس و LIMIT
         const query = await db.execute({
-          sql: "SELECT Session_Number, Answer FROM kpis_data WHERE Month = ? AND Year = ? AND Indicator = ?",
+          sql: "SELECT Session_Number, Answer FROM kpis_data WHERE Month = ? AND Year = ? AND Indicator = ? LIMIT 2500",
           args: [m, y, indicator]
         });
 
@@ -537,6 +654,8 @@ export default async function handler(req: any, res: any) {
           remaining: 999999,
           isFull: false
         };
+
+        sessionStatusCache.set(cacheKey, { data: result, timestamp: now });
         break;
       }
 
@@ -576,12 +695,15 @@ export default async function handler(req: any, res: any) {
             ]
           });
         }
+
+        // تحديث الذاكرة فوراً وإلغاء الكاش القديم
+        invalidateKpiDataCaches(form.indicator, month, year);
+
         result = { success: true, session: form.sessionNum };
         break;
       }
 
       case 'fetchKpiReport': {
-        await syncAllConfiguredQuestionsToReports();
         const monthStr = args[0];
         const indicatorFilter = args[1];
         if (!monthStr) {
@@ -597,6 +719,7 @@ export default async function handler(req: any, res: any) {
           sql += " AND Indicator = ?";
           sqlArgs.push(indicatorFilter);
         }
+        sql += " ORDER BY Session_Number ASC, id ASC LIMIT 2500";
 
         const query = await db.execute({ sql, args: sqlArgs });
 
@@ -621,79 +744,57 @@ export default async function handler(req: any, res: any) {
       }
 
       case 'fetchReportsSummary': {
-        await syncAllConfiguredQuestionsToReports();
         const monthFilter = args[0]; // "YYYY-MM" or empty/all
-        let sql = "SELECT id, Month, Year, Indicator, Answer, Department, Category, Session_Number FROM kpis_data";
+        const cacheKey = monthFilter || 'all';
+        const now = Date.now();
+
+        // 1. فحص الكاش في الذاكرة (In-Memory Cache) لتجنب القراءة السحابية
+        const cached = summaryCache.get(cacheKey);
+        if (cached && (now - cached.timestamp < SUMMARY_CACHE_TTL)) {
+          result = cached.data;
+          break;
+        }
+
+        // 2. استخدام التجميع على مستوى SQL (GROUP BY Aggregation) لتقليص حجم القراءة من آلاف الصفوف إلى بضع صفوف فقط
+        let sql = `
+          SELECT 
+            Month, Year, Indicator,
+            COUNT(*) as totalRecords,
+            COUNT(DISTINCT Session_Number) as sessionsCount,
+            SUM(CASE WHEN Answer = 'Yes' THEN 1 ELSE 0 END) as totalYes,
+            SUM(CASE WHEN Answer IN ('Yes', 'No') THEN 1 ELSE 0 END) as totalValid
+          FROM kpis_data
+        `;
         const sqlArgs: any[] = [];
         if (monthFilter && monthFilter !== 'all') {
           const [y, m] = monthFilter.split('-').map(Number);
           sql += " WHERE Month = ? AND Year = ?";
           sqlArgs.push(m, y);
         }
-        sql += " ORDER BY Year DESC, Month DESC, Indicator ASC";
+        sql += " GROUP BY Year, Month, Indicator ORDER BY Year DESC, Month DESC, Indicator ASC LIMIT 500";
 
         const query = await db.execute({ sql, args: sqlArgs });
-        const rows = query.rows;
-
-        const groups: Record<string, {
-          monthStr: string;
-          year: number;
-          month: number;
-          indicator: string;
-          totalYes: number;
-          totalValid: number;
-          sessions: Set<number>;
-          totalRecords: number;
-        }> = {};
-
-        for (const r of rows) {
+        const summary = query.rows.map(r => {
           const m = Number(r.Month);
           const y = Number(r.Year);
-          const formattedMonth = `${y}-${("0" + m).slice(-2)}`;
-          const ind = String(r.Indicator || 'غير محدد').trim();
-          const key = `${formattedMonth}___${ind}`;
-
-          if (!groups[key]) {
-            groups[key] = {
-              monthStr: formattedMonth,
-              year: y,
-              month: m,
-              indicator: ind,
-              totalYes: 0,
-              totalValid: 0,
-              sessions: new Set<number>(),
-              totalRecords: 0
-            };
-          }
-
-          groups[key].totalRecords++;
-          if (r.Session_Number !== null && r.Session_Number !== undefined) {
-            groups[key].sessions.add(Number(r.Session_Number));
-          }
-
-          const ans = String(r.Answer || '').trim();
-          if (ans === 'Yes' || ans === 'No') {
-            groups[key].totalValid++;
-            if (ans === 'Yes') {
-              groups[key].totalYes++;
-            }
-          }
-        }
-
-        result = Object.values(groups).map(g => {
-          const score = g.totalValid > 0 ? Math.round((g.totalYes / g.totalValid) * 100) : 0;
+          const totalValid = Number(r.totalValid) || 0;
+          const totalYes = Number(r.totalYes) || 0;
+          const score = totalValid > 0 ? Math.round((totalYes / totalValid) * 100) : 0;
           return {
-            month: g.monthStr,
-            year: g.year,
-            monthNum: g.month,
-            indicator: g.indicator,
+            month: `${y}-${("0" + m).slice(-2)}`,
+            year: y,
+            monthNum: m,
+            indicator: String(r.Indicator || 'غير محدد').trim(),
             score: score,
-            totalYes: g.totalYes,
-            totalValid: g.totalValid,
-            sessionsCount: g.sessions.size,
-            totalRecords: g.totalRecords
+            totalYes: totalYes,
+            totalValid: totalValid,
+            sessionsCount: Number(r.sessionsCount) || 1,
+            totalRecords: Number(r.totalRecords) || 0
           };
         });
+
+        summaryCache.set(cacheKey, { data: summary, timestamp: now });
+        result = summary;
         break;
       }
 
@@ -704,7 +805,7 @@ export default async function handler(req: any, res: any) {
 
         if (items === 'all' || !Array.isArray(items) || items.length === 0) {
           const query = await db.execute({
-            sql: "SELECT id, Month, Year, Date, Department, Category, Session_Number, Indicator, Procedure, Question, Answer, Note FROM kpis_data ORDER BY Year DESC, Month DESC, Indicator ASC, id ASC"
+            sql: "SELECT id, Month, Year, Date, Department, Category, Session_Number, Indicator, Procedure, Question, Answer, Note FROM kpis_data ORDER BY Year DESC, Month DESC, Indicator ASC, id ASC LIMIT 5000"
           });
           for (const r of query.rows) {
             const ind = String(r.Indicator || '').trim();
@@ -730,7 +831,7 @@ export default async function handler(req: any, res: any) {
             if (!item.month || !item.indicator) continue;
             const [y, m] = item.month.split('-').map(Number);
             const query = await db.execute({
-              sql: "SELECT id, Month, Year, Date, Department, Category, Session_Number, Indicator, Procedure, Question, Answer, Note FROM kpis_data WHERE Month = ? AND Year = ? AND Indicator = ? ORDER BY id ASC",
+              sql: "SELECT id, Month, Year, Date, Department, Category, Session_Number, Indicator, Procedure, Question, Answer, Note FROM kpis_data WHERE Month = ? AND Year = ? AND Indicator = ? ORDER BY id ASC LIMIT 2000",
               args: [m, y, item.indicator]
             });
             for (const r of query.rows) {
@@ -759,7 +860,7 @@ export default async function handler(req: any, res: any) {
       case 'fetchAllResultsForExcel': {
         const procMap = await getQuestionToProcedureMap();
         const query = await db.execute({
-          sql: "SELECT id, Month, Year, Date, Inspector, Department, Category, Session_Number, Indicator, Procedure, Question, Answer, Note, Target_Name, Target_Job_ID FROM kpis_data ORDER BY Year DESC, Month DESC, Indicator ASC, COALESCE(Session_Number, 1) ASC, id ASC"
+          sql: "SELECT id, Month, Year, Date, Inspector, Department, Category, Session_Number, Indicator, Procedure, Question, Answer, Note, Target_Name, Target_Job_ID FROM kpis_data ORDER BY Year DESC, Month DESC, Indicator ASC, COALESCE(Session_Number, 1) ASC, id ASC LIMIT 15000"
         });
         result = query.rows.map(r => {
           const ind = String(r.Indicator || '').trim();
@@ -795,7 +896,7 @@ export default async function handler(req: any, res: any) {
         const [y, m] = monthStr.split('-').map(Number);
         const procMap = await getQuestionToProcedureMap();
         const query = await db.execute({
-          sql: "SELECT id, Date, Month, Year, Inspector, Department, Category, Session_Number, Indicator, Procedure, Question, Answer, Note, Target_Name FROM kpis_data WHERE Month = ? AND Year = ? AND Indicator = ? ORDER BY Session_Number ASC, id ASC",
+          sql: "SELECT id, Date, Month, Year, Inspector, Department, Category, Session_Number, Indicator, Procedure, Question, Answer, Note, Target_Name FROM kpis_data WHERE Month = ? AND Year = ? AND Indicator = ? ORDER BY Session_Number ASC, id ASC LIMIT 2000",
           args: [m, y, indicator]
         });
         result = query.rows.map(r => {
@@ -833,6 +934,8 @@ export default async function handler(req: any, res: any) {
             }
           }
         }
+        // تحديث الذاكرة فوراً وإلغاء الكاش عند التعديل
+        invalidateKpiDataCaches();
         result = { success: true };
         break;
       }
@@ -848,6 +951,8 @@ export default async function handler(req: any, res: any) {
           sql: "DELETE FROM kpis_data WHERE Month = ? AND Year = ? AND Indicator = ?",
           args: [m, y, indicator]
         });
+        // تحديث الذاكرة فوراً وإلغاء الكاش عند الحذف
+        invalidateKpiDataCaches(indicator, m, y);
         result = { success: true };
         break;
       }
@@ -890,6 +995,8 @@ export default async function handler(req: any, res: any) {
           });
         }
         result = { success: true, count: records.length };
+        // تحديث الذاكرة فوراً وإلغاء الكاش
+        invalidateKpiDataCaches(targetIndicator, m, y);
         break;
       }
 
@@ -904,8 +1011,9 @@ export default async function handler(req: any, res: any) {
         }
 
         const [y, m] = monthStr.split('-').map(Number);
+        // استعلام محدد الأعمدة فقط مع LIMIT بدلاً من SELECT *
         const query = await db.execute({
-          sql: "SELECT * FROM kpis_data WHERE Month = ? AND Year = ? AND Indicator = ? ORDER BY Session_Number ASC, id ASC",
+          sql: "SELECT id, Date, Month, Year, Inspector, Department, Category, Session_Number, Indicator, Procedure, Question, Answer, Note, Target_Name, Target_Job_ID FROM kpis_data WHERE Month = ? AND Year = ? AND Indicator = ? ORDER BY Session_Number ASC, id ASC LIMIT 3000",
           args: [m, y, indicator]
         });
 
@@ -1005,6 +1113,9 @@ export default async function handler(req: any, res: any) {
           }
         }
 
+        // تحديث الذاكرة فوراً وإلغاء الكاش
+        invalidateKpiDataCaches(indicator, m, y);
+
         const totalSessionsCount = currentSessionsCount + addedSessionsCount;
         result = {
           success: true,
@@ -1066,6 +1177,10 @@ export default async function handler(req: any, res: any) {
           deletedRowsCount = delRes.rowsAffected || 0;
         }
 
+        // تحديث الذاكرة محلياً فوراً
+        updateCachedSettingsInMemory({ indicators: remainingIndicators });
+        invalidateKpiDataCaches(indicator);
+
         result = {
           success: true,
           indicator,
@@ -1114,6 +1229,10 @@ export default async function handler(req: any, res: any) {
           });
           updatedHistoricalCount = updRes.rowsAffected || 0;
         }
+
+        // تحديث الذاكرة محلياً فوراً
+        updateCachedSettingsInMemory({ indicators });
+        invalidateKpiDataCaches(indicator);
 
         result = { success: true, updatedHistoricalCount };
         break;
@@ -1179,6 +1298,10 @@ export default async function handler(req: any, res: any) {
           addedToSessionsCount = await syncQuestionToExistingSessions(indicator, procedure, question);
         }
 
+        // تحديث الذاكرة محلياً فوراً
+        updateCachedSettingsInMemory({ indicators });
+        invalidateKpiDataCaches(indicator);
+
         result = { success: true, addedToSessionsCount, indicator, procedure, question };
         break;
       }
@@ -1211,6 +1334,11 @@ export default async function handler(req: any, res: any) {
 
         // 2. حذف وإلغاء السؤال نهائياً من جميع النتائج وسجلات التقييم المحفوظة في جدول kpis_data
         const deletedRows = await removeQuestionFromExistingSessions(indicator, question);
+
+        // تحديث الذاكرة محلياً فوراً
+        updateCachedSettingsInMemory({ indicators });
+        invalidateKpiDataCaches(indicator);
+
         result = { 
           success: true, 
           indicator, 
@@ -1268,12 +1396,23 @@ export default async function handler(req: any, res: any) {
           updatedRecordsCount = updateRes.rowsAffected || 0;
         }
 
+        // تحديث الذاكرة محلياً فوراً
+        updateCachedSettingsInMemory({ indicators, indicator_targets: targets });
+        invalidateKpiDataCaches();
+
         result = { success: true, oldName, newName, updatedRecordsCount, settingsUpdated: modified };
         break;
       }
 
       case 'fetchIndividualAssessments': {
-        const query = await db.execute("SELECT * FROM kpis_data");
+        // استعلام محدد الأعمدة بدقة مع تصفية وفهرس و LIMIT بدلاً من SELECT *
+        const query = await db.execute(`
+          SELECT Date, Month, Year, Inspector, Department, Category, Session_Number, Indicator, Question, Answer, Note, Target_Name, Target_Job_ID 
+          FROM kpis_data 
+          WHERE (Target_Name IS NOT NULL AND TRIM(Target_Name) != '') OR (Target_Job_ID IS NOT NULL AND TRIM(Target_Job_ID) != '')
+          ORDER BY Year DESC, Month DESC, id DESC
+          LIMIT 3000
+        `);
         const data = query.rows;
 
         const sessions: Record<string, any> = {};
@@ -1346,10 +1485,21 @@ export default async function handler(req: any, res: any) {
           break;
         }
 
+        const cacheKey = `${indicator}___${monthStr}`;
+        const now = Date.now();
+
+        // 1. فحص الكاش في الذاكرة أولاً
+        const cached = dashboardCache.get(cacheKey);
+        if (cached && (now - cached.timestamp < DASHBOARD_CACHE_TTL)) {
+          result = cached.data;
+          break;
+        }
+
         const [targetYear, targetMonth] = monthStr.split('-').map(Number);
 
+        // 2. طلب الأعمدة المطلوبة فقط (Month, Department, Category, Answer) مع LIMIT 10000 بدلاً من SELECT *
         const query = await db.execute({
-          sql: "SELECT * FROM kpis_data WHERE Indicator = ? AND Year = ?",
+          sql: "SELECT Month, Department, Category, Answer FROM kpis_data WHERE Indicator = ? AND Year = ? LIMIT 10000",
           args: [indicator, targetYear]
         });
         const data = query.rows;
@@ -1423,6 +1573,8 @@ export default async function handler(req: any, res: any) {
           totalInspections: globalTotal,
           overallCompliance: globalTotal ? Math.round((globalYes / globalTotal) * 100) : 0
         };
+
+        dashboardCache.set(cacheKey, { data: result, timestamp: now });
         break;
       }
 

@@ -911,8 +911,8 @@
                 </div>
              </div>
              <div class="flex gap-2">
-                <button onclick="loadReportsList()" class="flex-1 bg-indigo-600 text-white py-2 rounded-md font-bold text-xs hover:bg-indigo-700 h-[40px] transition">
-                   <i class="fas fa-filter ml-1"></i> تصفية
+                <button onclick="loadReportsList(undefined, true)" class="flex-1 bg-indigo-600 text-white py-2 rounded-md font-bold text-xs hover:bg-indigo-700 h-[40px] transition" title="تحديث البيانات فوراً">
+                   <i class="fas fa-sync-alt ml-1"></i> تحديث
                 </button>
                 <button onclick="showAllMonthsReports()" class="flex-1 bg-emerald-50 text-emerald-800 border border-emerald-300 py-2 rounded-md font-bold text-xs hover:bg-emerald-100 h-[40px] transition" title="عرض كافة التقارير لجميع الشهور المسجلة">
                    <i class="fas fa-calendar-alt ml-1"></i> جميع الشهور
@@ -1267,8 +1267,23 @@
        loadReportsList('all');
     }
 
-    // --- Data Loading ---
-    function loadSettings() {
+    // --- Data Loading & In-Memory Caching ---
+    function loadSettings(force = false) {
+       // فحص الذاكرة المؤقتة: إذا كانت الإعدادات محملة مسبقاً، نستخدمها مباشرة دون استعلام الخادم
+       if (!force && config && config.indicators && config.indicators.length > 0) {
+          if (config.hospital_name) {
+             el('brand-name').innerText = config.hospital_name;
+             if(el('rep-hospital-name')) el('rep-hospital-name').innerText = config.hospital_name;
+             if(el('indiv-hospital-name')) el('indiv-hospital-name').innerText = config.hospital_name;
+          }
+          fillDropdowns();
+          renderSettingsPage();
+          if (!el('home').classList.contains('hidden')) {
+              initDashboard();
+          }
+          return;
+       }
+
        loading(true);
        google.script.run.withSuccessHandler(data => {
           config = data;
@@ -1460,7 +1475,43 @@
        if (btnMult) btnMult.classList.add('hidden');
     }
 
-    function checkSession() {
+    // ذاكرة مؤقتة للجلسات ومؤقت تقليل الفحص المتكرر (Debounce & In-Memory Cache)
+    let checkSessionDebounceTimer = null;
+    const clientSessionCache = new Map();
+
+    function checkSession(immediate = false) {
+       if (checkSessionDebounceTimer) {
+          clearTimeout(checkSessionDebounceTimer);
+       }
+       if (immediate) {
+          executeCheckSession();
+       } else {
+          // Debounce 250ms لمنع الفحص المتكرر عند تغيير الحقول بسرعة
+          checkSessionDebounceTimer = setTimeout(executeCheckSession, 250);
+       }
+    }
+
+    function applySessionResult(res) {
+       currentSession = res;
+       const nextSessionNum = res.nextSession || (res.currentCount + 1);
+       el('session-display').innerText = `الجلسة رقم ${nextSessionNum}`;
+       if(el('session-count-text')) {
+          el('session-count-text').innerText = `${res.currentCount || 0} جلسة/جلسات`;
+       }
+       const btnMult = el('btn-multiply-from-entry');
+       if (btnMult) {
+          if (res.currentCount && res.currentCount > 0) {
+             btnMult.classList.remove('hidden');
+          } else {
+             btnMult.classList.add('hidden');
+          }
+       }
+       
+       hide('limit-msg');
+       loadQuestions(); 
+    }
+
+    function executeCheckSession() {
        const date = el('date').value;
        const ind = el('indicator').value;
        
@@ -1476,25 +1527,18 @@
        const cat = el('category').value;
        const insp = el('inspector').value;
 
+       const cacheKey = `${ind}___${date}`;
+       const now = Date.now();
+       const cached = clientSessionCache.get(cacheKey);
+       if (cached && (now - cached.timestamp < 30000)) {
+          applySessionResult(cached.res);
+          return;
+       }
+
        loading(true);
        google.script.run.withSuccessHandler(res => {
-          currentSession = res;
-          const nextSessionNum = res.nextSession || (res.currentCount + 1);
-          el('session-display').innerText = `الجلسة رقم ${nextSessionNum}`;
-          if(el('session-count-text')) {
-             el('session-count-text').innerText = `${res.currentCount || 0} جلسة/جلسات`;
-          }
-          const btnMult = el('btn-multiply-from-entry');
-          if (btnMult) {
-             if (res.currentCount && res.currentCount > 0) {
-                btnMult.classList.remove('hidden');
-             } else {
-                btnMult.classList.add('hidden');
-             }
-          }
-          
-          hide('limit-msg');
-          loadQuestions(); 
+          clientSessionCache.set(cacheKey, { res, timestamp: Date.now() });
+          applySessionResult(res);
           loading(false);
        }).withFailureHandler(err => {
           loading(false);
@@ -1741,6 +1785,18 @@
           const savedMonth = (date || '').slice(0, 7);
           const sessNum = (res && res.session) ? res.session : (currentSession ? currentSession.nextSession : '');
           
+          // تحديث الذاكرة المحلية مباشرة (Update In-Memory State) دون الحاجة لإعادة جلب كل الجداول
+          clientSessionCache.delete(`${savedInd}___${date}`);
+          if (typeof clientReportsSummaryCache !== 'undefined') {
+             clientReportsSummaryCache.delete(savedMonth);
+             clientReportsSummaryCache.delete('all');
+          }
+          const item = rawReportsList.find(it => it.month === savedMonth && it.indicator === savedInd);
+          if (item) {
+             item.sessionsCount = (item.sessionsCount || 0) + 1;
+             item.totalRecords = (item.totalRecords || 0) + data.answers.length;
+          }
+
           initEntry();
           // Reset selections partially
           el('department').value = ''; el('category').value = ''; el('indicator').value = ''; 
@@ -1755,11 +1811,12 @@
        }).submitKpiForm(data);
     }
 
-    // --- Reports State & Management ---
+    // --- Reports State & In-Memory Management ---
     let rawReportsList = [];
     let currentEditRecords = [];
     let currentEditingIndicator = '';
     let currentEditingMonth = '';
+    const clientReportsSummaryCache = new Map();
 
     function getReport() {
        loadReportsList();
@@ -1770,14 +1827,25 @@
        loadReportsList('all');
     }
 
-    function loadReportsList(overrideMonth) {
+    function loadReportsList(overrideMonth, force = false) {
        const m = overrideMonth !== undefined ? overrideMonth : (el('rep-month').value || 'all');
+       const now = Date.now();
+       const cached = clientReportsSummaryCache.get(m);
+
+       // استخدام الكاش بالذاكرة في العميل لتجنب استهلاك القراءات
+       if (!force && cached && (now - cached.timestamp < 60000)) {
+          rawReportsList = cached.data || [];
+          filterReportsTable();
+          return;
+       }
+
        loading(true);
        el('reports-table-count').innerText = 'جاري التحميل...';
 
        google.script.run.withSuccessHandler(data => {
           loading(false);
           rawReportsList = data || [];
+          clientReportsSummaryCache.set(m, { data: rawReportsList, timestamp: Date.now() });
           filterReportsTable();
        }).withFailureHandler(err => {
           loading(false);
@@ -2526,7 +2594,13 @@
        google.script.run.withSuccessHandler(res => {
           loading(false);
           alert('تم حذف التقرير بنجاح');
-          loadReportsList();
+          // تحديث الذاكرة محلياً فوراً دون الحاجة لإعادة جلب كامل الجدول
+          rawReportsList = rawReportsList.filter(item => !(item.month === month && item.indicator === indicator));
+          if (typeof clientReportsSummaryCache !== 'undefined') {
+             clientReportsSummaryCache.delete(month);
+             clientReportsSummaryCache.delete('all');
+          }
+          filterReportsTable();
           hideReportPreview();
        }).withFailureHandler(err => {
           loading(false);
@@ -2681,7 +2755,23 @@
           loading(false);
           alert('تم حفظ تعديلات التقرير بنجاح');
           closeEditReportModal();
-          loadReportsList();
+          
+          // تحديث الذاكرة المحلية مباشرة (Local State Update): إعادة حساب النسبة والنتائج محلياً
+          const validRecs = currentEditRecords.filter(r => r.answer === 'Yes' || r.answer === 'No');
+          const totalValid = validRecs.length;
+          const totalYes = validRecs.filter(r => r.answer === 'Yes').length;
+          const newScore = totalValid > 0 ? Math.round((totalYes / totalValid) * 100) : 0;
+          const targetItem = rawReportsList.find(it => it.month === currentEditingMonth && it.indicator === currentEditingIndicator);
+          if (targetItem) {
+             targetItem.score = newScore;
+             targetItem.totalYes = totalYes;
+             targetItem.totalValid = totalValid;
+          }
+          if (typeof clientReportsSummaryCache !== 'undefined') {
+             clientReportsSummaryCache.delete(currentEditingMonth);
+             clientReportsSummaryCache.delete('all');
+          }
+          filterReportsTable();
           
           // If the preview is currently showing this indicator, refresh it
           const previewContent = el('rep-content');
@@ -3122,9 +3212,17 @@
 
           alert(`تمت مضاعفة الجلسات بنجاح!\nتمت إضافة ${addedCount} جلسة جديدة (${addedRecs} تقييم) لهذا المؤشر في نفس الشهر (${currentMultiplyMonth})، ليصبح إجمالي الجلسات المسجلة ${totalCount} جلسة.`);
 
-          // Refresh saved reports table
-          rawReportsList = [];
-          loadReportsList();
+          // تحديث الذاكرة المحلية مباشرة دون إعادة جلب كامل الجدول
+          const targetItem = rawReportsList.find(it => it.month === currentMultiplyMonth && it.indicator === currentMultiplyIndicator);
+          if (targetItem) {
+             targetItem.sessionsCount = totalCount;
+             if (addedRecs) targetItem.totalRecords = (targetItem.totalRecords || 0) + Number(addedRecs);
+          }
+          if (typeof clientReportsSummaryCache !== 'undefined') {
+             clientReportsSummaryCache.delete(currentMultiplyMonth);
+             clientReportsSummaryCache.delete('all');
+          }
+          filterReportsTable();
 
           // If preview is currently open for this indicator and month, refresh it
           const previewContent = el('rep-content');
@@ -4290,8 +4388,16 @@
        loading(true);
        google.script.run.withSuccessHandler(() => {
           loading(false);
-          alert('تم الحفظ');
-          loadSettings();
+          alert('تم الحفظ بنجاح');
+          // تحديث الإعدادات في ذاكرة التطبيق مباشرة (Update In-Memory Config) دون طلب إضافي
+          config = newConf;
+          if (newConf.hospital_name) {
+             el('brand-name').innerText = newConf.hospital_name;
+             if (el('rep-hospital-name')) el('rep-hospital-name').innerText = newConf.hospital_name;
+             if (el('indiv-hospital-name')) el('indiv-hospital-name').innerText = newConf.hospital_name;
+          }
+          fillDropdowns();
+          renderSettingsPage();
        }).saveAppSettings(newConf);
      }
      
