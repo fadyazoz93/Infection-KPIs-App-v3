@@ -665,11 +665,6 @@
                 <input type="text" id="modal-proc-question" placeholder="مثال: هل تم الالتزام بتعقيم الأدوات قبل الاستخدام؟" class="input w-full text-sm text-gray-900 focus:border-emerald-500 focus:ring-emerald-500">
              </div>
 
-             <div>
-                <label class="block text-xs font-bold text-gray-700 mb-1.5">ملاحظة الخطأ التلقائية (اختياري):</label>
-                <input type="text" id="modal-proc-note" placeholder="مثال: لم يتم الالتزام بالتعقيم..." class="input w-full text-xs text-gray-700">
-             </div>
-
              <div class="bg-emerald-50/80 border border-emerald-200 rounded-lg p-3">
                 <label class="flex items-start gap-2.5 cursor-pointer text-xs font-medium text-gray-800 select-none">
                    <input type="checkbox" id="modal-proc-add-to-reports" checked class="mt-0.5 w-4 h-4 text-emerald-600 rounded border-gray-300 focus:ring-emerald-500">
@@ -1069,9 +1064,9 @@
              <!-- Manual Entry -->
              <div class="mb-6 bg-gray-50 p-3.5 rounded-lg border border-gray-200">
                 <h4 class="text-sm font-bold text-gray-700 mb-2.5 flex items-center gap-1.5">
-                   <i class="fas fa-plus-circle text-indigo-600"></i> 1. إضافة يدوية (مؤشر / إجراء / سؤال)
+                   <i class="fas fa-plus-circle text-indigo-600"></i> 1. إضافة يدوية (المؤشر / الإجراء / السؤال)
                 </h4>
-                <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-2.5 mb-2.5">
+                <div class="grid grid-cols-1 sm:grid-cols-3 gap-2.5 mb-2.5">
                    <div>
                       <label class="block text-[11px] font-bold text-gray-600 mb-1">اسم المؤشر:</label>
                       <input type="text" id="new-ind-name" list="existing-indicators-list" placeholder="مثال: نظافة الأيدي" class="input text-sm w-full">
@@ -1086,10 +1081,6 @@
                       <label class="block text-[11px] font-bold text-gray-600 mb-1">السؤال:</label>
                       <input type="text" id="new-ind-q" placeholder="مثال: هل قام بغسل الأيدي (اللحظة 1)؟" class="input text-sm w-full">
                    </div>
-                   <div>
-                      <label class="block text-[11px] font-bold text-gray-600 mb-1">ملاحظة الخطأ:</label>
-                      <input type="text" id="new-ind-note" placeholder="مثال: لم يلتزم قبل لمس المريض" class="input text-sm w-full">
-                   </div>
                 </div>
                 <button onclick="addManualKPI()" class="bg-indigo-600 text-white px-5 py-2 rounded-lg text-sm font-bold hover:bg-indigo-700 w-full md:w-auto transition shadow-sm">
                    <i class="fas fa-plus ml-1"></i> إضافة السؤال للإجراء والمؤشر
@@ -1103,11 +1094,11 @@
                       <i class="fas fa-file-excel text-green-600"></i> 2. استيراد من إكسيل (نسخ ولصق)
                    </h4>
                    <span class="text-[11px] text-indigo-900 bg-indigo-50 px-2.5 py-1 rounded border border-indigo-200 font-medium">
-                      الترتيب في إكسيل: العمود 1 (المؤشر) | العمود 2 (الإجراء) | العمود 3 (السؤال) | العمود 4 (ملاحظة الخطأ)
+                      الترتيب في إكسيل: العمود 1 (المؤشر) | العمود 2 (الإجراء) | العمود 3 (السؤال)
                    </span>
                 </div>
                 <div class="flex gap-2 items-start">
-                   <textarea id="bulk-kpi" class="input h-16 text-xs font-mono" placeholder="الصق البيانات هنا من الإكسيل مباشرة (المؤشر | الإجراء | السؤال | الملاحظة)..."></textarea>
+                   <textarea id="bulk-kpi" class="input h-16 text-xs font-mono" placeholder="الصق البيانات هنا من الإكسيل مباشرة (المؤشر | الإجراء | السؤال)..."></textarea>
                    <button onclick="importKPIs()" class="bg-teal-600 hover:bg-teal-700 text-white px-4 py-2 rounded-lg font-bold text-sm h-16 whitespace-nowrap transition shadow-sm">
                       <i class="fas fa-file-import block text-lg mb-1"></i> استيراد
                    </button>
@@ -1121,7 +1112,6 @@
                          <th class="p-2.5 border">المؤشر</th>
                          <th class="p-2.5 border text-indigo-900 bg-indigo-50/70">الإجراء</th>
                          <th class="p-2.5 border">السؤال</th>
-                         <th class="p-2.5 border">ملاحظة الخطأ</th>
                          <th class="p-2.5 border text-center">الفئات المختصة</th>
                          <th class="p-2.5 border text-center">الأقسام المختصة</th>
                          <th class="p-2.5 border w-12 text-center">حذف</th>
@@ -3722,7 +3712,7 @@
        
        const rawList = config.indicators || [];
        if (rawList.length === 0) {
-          tbody.innerHTML = `<tr><td colspan="7" class="p-6 text-center text-gray-400 font-medium">لا توجد مؤشرات أو أسئلة مسجلة حتى الآن</td></tr>`;
+          tbody.innerHTML = `<tr><td colspan="6" class="p-6 text-center text-gray-400 font-medium">لا توجد مؤشرات أو أسئلة مسجلة حتى الآن</td></tr>`;
           return;
        }
 
@@ -3753,7 +3743,7 @@
           const indTr = document.createElement('tr');
           indTr.className = 'bg-slate-100 font-bold text-indigo-950 border-t-2 border-indigo-300';
           indTr.innerHTML = `
-             <td colspan="7" class="p-2.5 bg-slate-100">
+             <td colspan="6" class="p-2.5 bg-slate-100">
                 <div class="flex items-center justify-between">
                    <div class="flex items-center gap-2">
                       <span class="inline-flex items-center justify-center w-6 h-6 rounded bg-indigo-700 text-white text-xs">
@@ -3787,7 +3777,7 @@
              procTr.className = 'bg-indigo-50/80 border-y border-indigo-100 font-semibold';
              procTr.innerHTML = `
                 <td class="p-2 border-l border-gray-200 text-gray-400 text-[11px] select-none">${indName}</td>
-                <td colspan="6" class="p-2 bg-indigo-50 font-bold text-indigo-900">
+                <td colspan="5" class="p-2 bg-indigo-50 font-bold text-indigo-900">
                    <div class="flex items-center justify-between">
                       <div class="flex items-center gap-2">
                          <span class="inline-flex items-center px-2 py-0.5 rounded text-xs bg-indigo-600 text-white font-bold shadow-2xs">
@@ -3831,7 +3821,6 @@
                          <span class="text-xs leading-relaxed">${item.question}</span>
                       </div>
                    </td>
-                   <td class="p-2.5 border text-red-600 text-xs">${item.note || '-'}</td>
                    <td class="p-2.5 border text-center">
                       <button onclick="openSelectionEditor('cats', ${item.originalIndex})" class="bg-indigo-100 text-indigo-700 hover:bg-indigo-200 px-2 py-1 rounded text-xs truncate max-w-[100px] transition" title="${catsStr}">
                          ${catsStr} <i class="fas fa-edit mr-1"></i>
@@ -4074,7 +4063,6 @@
 
        el('modal-proc-name').value = '';
        el('modal-proc-question').value = '';
-       el('modal-proc-note').value = '';
        el('modal-proc-add-to-reports').checked = true;
 
        const modal = el('add-procedure-modal');
@@ -4094,7 +4082,7 @@
        const ind = (el('modal-proc-ind-select').value || '').trim();
        const proc = (el('modal-proc-name').value || '').trim();
        const question = (el('modal-proc-question').value || '').trim();
-       const note = (el('modal-proc-note').value || '').trim();
+       const note = '';
        const addToReports = el('modal-proc-add-to-reports').checked;
 
        if (!ind) {
@@ -4204,7 +4192,7 @@
        const ind = el('new-ind-name').value.trim();
        const proc = el('new-ind-proc').value.trim() || 'عام';
        const q = el('new-ind-q').value.trim();
-       const note = el('new-ind-note').value.trim();
+       const note = el('new-ind-note') ? el('new-ind-note').value.trim() : '';
        
        if(!ind || !q) {
           alert('يرجى إدخال اسم المؤشر والسؤال على الأقل.');
@@ -4226,9 +4214,9 @@
              if(!config.indicators) config.indicators = [];
              config.indicators.push(newItem);
              
-             // Clear question and note; keep indicator and procedure so user can rapidly add another question to the same procedure
+             // Clear question; keep indicator and procedure so user can rapidly add another question to the same procedure
              el('new-ind-q').value = '';
-             el('new-ind-note').value = '';
+             if (el('new-ind-note')) el('new-ind-note').value = '';
              el('new-ind-q').focus();
              
              renderKpiList();
@@ -4265,7 +4253,7 @@
           parts = parts.map(p => p.trim());
           
           if (parts.length >= 4) {
-             // 4 columns: المؤشر | الإجراء | السؤال | ملاحظة الخطأ
+             // 4 columns: المؤشر | الإجراء | السؤال | ملاحظة (توافق)
              config.indicators.push({
                 indicator: parts[0],
                 procedure: parts[1] || 'عام',
@@ -4275,12 +4263,12 @@
              });
              count++;
           } else if (parts.length === 3) {
-             // 3 columns: المؤشر | السؤال | ملاحظة الخطأ
+             // 3 columns: المؤشر | الإجراء | السؤال
              config.indicators.push({
                 indicator: parts[0],
-                procedure: 'عام',
-                question: parts[1],
-                note: parts[2] || '',
+                procedure: parts[1] || 'عام',
+                question: parts[2],
+                note: '',
                 cats: [], depts: [] 
              });
              count++;
