@@ -15,10 +15,204 @@
   <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
   <style>
-    @import url('https://fonts.googleapis.com/css2?family=Tajawal:wght@400;700&display=swap');
-    body { font-family: 'Tajawal', sans-serif; background-color: #f8fafc; }
-    
-    /* Print Tweaks */
+    @import url('https://fonts.googleapis.com/css2?family=IBM+Plex+Sans+Arabic:wght@400;600;700&family=Inter:wght@400;600;700&display=swap');
+
+    :root {
+      --bg-canvas: #F8FAFC;
+      --bg-surface: #FFFFFF;
+      --border-subtle: #E2E8F0;
+      --color-primary: #0D9488;
+      --color-primary-hover: #0F766E;
+      --color-secondary: #0284C7;
+      --color-success-bg: #DCFCE7;
+      --color-success-text: #10B981;
+      --color-warning-bg: #FEF3C7;
+      --color-warning-text: #F59E0B;
+      --color-danger-bg: #FEE2E2;
+      --color-danger-text: #EF4444;
+    }
+
+    body {
+      font-family: 'IBM Plex Sans Arabic', sans-serif;
+      background-color: var(--bg-canvas);
+      color: #0F172A;
+    }
+
+    .tabular-nums, .num-metric {
+      font-family: 'Inter', 'IBM Plex Sans Arabic', sans-serif;
+      font-variant-numeric: tabular-nums;
+    }
+
+    /* Bento Card & Surface System (Screen) */
+    .bento-card {
+      background-color: var(--bg-surface);
+      border: 1px solid var(--border-subtle);
+      border-radius: 16px;
+      box-shadow: 0 1px 3px rgba(15, 23, 42, 0.04);
+      transition: box-shadow 250ms ease-out, border-color 250ms ease-out;
+    }
+    .bento-card:hover {
+      box-shadow: 0 4px 14px rgba(15, 23, 42, 0.06);
+    }
+
+    .clinical-header {
+      background: rgba(255, 255, 255, 0.88);
+      backdrop-filter: blur(12px);
+      -webkit-backdrop-filter: blur(12px);
+      border-bottom: 1px solid #E2E8F0;
+    }
+
+    .pill-search {
+      background-color: #F1F5F9;
+      border: 1px solid transparent;
+      border-radius: 9999px;
+      transition: background-color 200ms ease-out, border-color 200ms ease-out, box-shadow 200ms ease-out;
+    }
+    .pill-search:focus {
+      background-color: #FFFFFF;
+      border-color: #0D9488;
+      box-shadow: 0 0 0 3px rgba(13, 148, 136, 0.14);
+      outline: none;
+    }
+
+    /* 1. Navigation & Action Icon Lift Micro-Interaction */
+    .nav-btn {
+      color: #475569;
+      transition: color 220ms ease-out, background-color 220ms ease-out;
+    }
+    .nav-btn .nav-icon,
+    .action-icon-btn .action-icon {
+      transition: transform 220ms ease-out, color 220ms ease-out;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+    }
+    .nav-btn:hover,
+    .nav-btn.active-nav {
+      color: #0D9488;
+      background-color: rgba(13, 148, 136, 0.08);
+    }
+    .nav-btn:hover .nav-icon,
+    .nav-btn.active-nav .nav-icon,
+    .action-icon-btn:hover .action-icon {
+      transform: translateY(-2px);
+      color: #0D9488;
+    }
+
+    /* 2. Checklist & Status Completion Morph + SVG Stroke Draw */
+    .audit-check-badge {
+      width: 28px;
+      height: 28px;
+      border-radius: 9999px;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      flex-shrink: 0;
+      border: 2px solid #CBD5E1;
+      background-color: #FFFFFF;
+      color: transparent;
+      transition: background-color 250ms ease-out, border-color 250ms ease-out, box-shadow 250ms ease-out;
+    }
+    .audit-check-badge.is-yes {
+      background-color: #10B981;
+      border-color: #10B981;
+      color: #FFFFFF;
+      box-shadow: 0 0 0 4px #DCFCE7;
+      animation: checkSpringBounce 320ms cubic-bezier(0.34, 1.56, 0.64, 1);
+    }
+    .audit-check-badge.is-yes .check-svg-path {
+      stroke-dasharray: 24;
+      stroke-dashoffset: 0;
+      animation: drawCheckStroke 250ms ease-out forwards;
+    }
+    .audit-check-badge.is-no {
+      background-color: #EF4444;
+      border-color: #EF4444;
+      color: #FFFFFF;
+      box-shadow: 0 0 0 4px #FEE2E2;
+      animation: checkSpringBounce 280ms ease-out;
+    }
+    .audit-check-badge.is-na {
+      background-color: #64748B;
+      border-color: #64748B;
+      color: #FFFFFF;
+      box-shadow: 0 0 0 4px #F1F5F9;
+    }
+    @keyframes checkSpringBounce {
+      0% { transform: scale(0.82); }
+      55% { transform: scale(1.12); }
+      100% { transform: scale(1); }
+    }
+    @keyframes drawCheckStroke {
+      0% { stroke-dashoffset: 24; }
+      100% { stroke-dashoffset: 0; }
+    }
+
+    /* 3. Notification & Alert Bell Concentric Pulse Ring */
+    .alert-bell-btn {
+      position: relative;
+    }
+    .alert-bell-dot {
+      position: absolute;
+      top: 5px;
+      right: 5px;
+      width: 9px;
+      height: 9px;
+      border-radius: 9999px;
+      background-color: #F59E0B;
+      border: 1.5px solid #FFFFFF;
+    }
+    .alert-bell-btn.has-alert:not(.acknowledged) .alert-bell-dot::after {
+      content: '';
+      position: absolute;
+      inset: -4px;
+      border-radius: 9999px;
+      border: 2px solid #F59E0B;
+      animation: bellPulseRing 1.6s cubic-bezier(0, 0, 0.2, 1) infinite;
+    }
+    @keyframes bellPulseRing {
+      0% { transform: scale(0.8); opacity: 0.9; }
+      75%, 100% { transform: scale(2.1); opacity: 0; }
+    }
+
+    /* 4. Data & Sparkline Stroke Draw (600ms) */
+    .sparkline-path {
+      stroke-dasharray: 420;
+      stroke-dashoffset: 420;
+      animation: drawSparkline 600ms ease-out forwards;
+    }
+    .sparkline-area {
+      opacity: 0;
+      animation: fadeInSparkArea 600ms ease-out 150ms forwards;
+    }
+    @keyframes drawSparkline {
+      to { stroke-dashoffset: 0; }
+    }
+    @keyframes fadeInSparkArea {
+      to { opacity: 1; }
+    }
+
+    /* 5. Medical ECG / Shield Loading State */
+    .ecg-loader-line {
+      stroke-dasharray: 140;
+      stroke-dashoffset: 140;
+      animation: ecgHeartbeatDraw 1.35s ease-in-out infinite;
+    }
+    .medical-shield-pulse {
+      animation: shieldSoftPulse 1.35s ease-in-out infinite;
+    }
+    @keyframes ecgHeartbeatDraw {
+      0% { stroke-dashoffset: 140; opacity: 0.4; }
+      45% { stroke-dashoffset: 0; opacity: 1; }
+      85% { stroke-dashoffset: -140; opacity: 0.4; }
+      100% { stroke-dashoffset: -140; opacity: 0.2; }
+    }
+    @keyframes shieldSoftPulse {
+      0%, 100% { transform: scale(1); }
+      50% { transform: scale(1.04); }
+    }
+
+    /* Print Tweaks - Strictly Preserved & Isolated */
     @media print {
       @page {
         size: auto;
@@ -26,6 +220,22 @@
       }
       
       .no-print { display: none !important; }
+
+      *, *::before, *::after {
+        animation: none !important;
+        transition: none !important;
+        transform: none !important;
+      }
+
+      .bento-card {
+        border-radius: 0 !important;
+        box-shadow: none !important;
+        border-color: #cbd5e1 !important;
+      }
+
+      tr, .report-table tr {
+        break-inside: avoid;
+      }
       
       html, body { 
         height: auto !important;
@@ -154,130 +364,192 @@
         padding: 0 !important;
       }
     }
-    
-    .loader {
-      border: 4px solid #f3f3f3; border-top: 4px solid #4f46e5; border-radius: 50%;
-      width: 40px; height: 40px; animation: spin 1s linear infinite;
-    }
-    @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
   </style>
-<link rel="stylesheet" href="/index.css">
 </head>
-<body class="text-slate-800 h-screen flex flex-col overflow-hidden">
+<body class="bg-[#F8FAFC] text-slate-900 h-screen flex flex-col overflow-hidden">
 
-  <!-- Header -->
-  <header class="bg-indigo-900 text-white shadow-md z-10 no-print flex-shrink-0">
-    <div class="container mx-auto px-4 h-16 flex justify-between items-center">
-      <div class="flex items-center gap-3">
-        <img src="/favicon.svg" alt="شعار النظام" class="w-10 h-10 rounded-xl shadow-md border border-white/10 bg-white/5 p-0.5 object-contain">
-        <div>
-          <h1 id="brand-name" class="font-bold text-lg leading-tight">وحدة مكافحة العدوى</h1>
-          <p class="text-xs text-indigo-200">نظام مؤشرات الأداء (KPIs)</p>
+  <!-- Clinical Sticky Frosted Header -->
+  <header class="clinical-header sticky top-0 z-30 no-print flex-shrink-0">
+    <div class="max-w-7xl mx-auto px-4 h-16 flex justify-between items-center gap-3">
+      <!-- Brand Identity -->
+      <div class="flex items-center gap-3 min-w-0">
+        <div class="w-10 h-10 rounded-2xl bg-[#0D9488]/10 border border-[#0D9488]/20 flex items-center justify-center flex-shrink-0 p-1">
+          <img src="/favicon.svg" alt="شعار النظام" class="w-8 h-8 object-contain">
+        </div>
+        <div class="min-w-0">
+          <h1 id="brand-name" class="font-bold text-base md:text-lg text-slate-900 leading-tight truncate">وحدة مكافحة العدوى</h1>
+          <p class="text-[11px] text-slate-500 font-medium truncate">نظام مؤشرات الأداء الجودة السريرية (KPIs)</p>
         </div>
       </div>
-      <nav class="hidden md:flex gap-6 text-sm font-bold items-center">
-        <button onclick="nav('home')" class="hover:text-indigo-300 transition">لوحة القيادة</button>
-        <button onclick="nav('entry')" class="nav-entry hidden hover:text-indigo-300 transition">إدخال تقييم</button>
-        <button onclick="nav('report')" class="hover:text-indigo-300 transition">التقارير</button>
-        <button onclick="nav('individuals')" class="hover:text-indigo-300 transition">التقييمات الفردية</button>
-        <button onclick="nav('settings')" class="nav-settings hidden hover:text-yellow-300 transition text-yellow-100">الإعدادات</button>
-        <button onclick="logout()" class="hover:text-red-300 transition text-red-200 mr-4"><i class="fas fa-sign-out-alt"></i> خروج</button>
+
+      <!-- Desktop Navigation -->
+      <nav class="hidden lg:flex gap-1.5 text-sm font-semibold items-center whitespace-nowrap">
+        <button type="button" onclick="nav('home')" data-page="home" class="nav-btn active-nav px-3 py-2 rounded-xl flex items-center gap-2 whitespace-nowrap">
+          <span class="nav-icon"><i class="fas fa-chart-line text-xs"></i></span>
+          <span>لوحة القيادة</span>
+        </button>
+        <button type="button" onclick="nav('entry')" data-page="entry" class="nav-btn nav-entry hidden px-3 py-2 rounded-xl flex items-center gap-2 whitespace-nowrap">
+          <span class="nav-icon"><i class="fas fa-clipboard-check text-xs"></i></span>
+          <span>إدخال تقييم</span>
+        </button>
+        <button type="button" onclick="nav('report')" data-page="report" class="nav-btn px-3 py-2 rounded-xl flex items-center gap-2 whitespace-nowrap">
+          <span class="nav-icon"><i class="fas fa-file-medical-alt text-xs"></i></span>
+          <span>التقارير</span>
+        </button>
+        <button type="button" onclick="nav('individuals')" data-page="individuals" class="nav-btn px-3 py-2 rounded-xl flex items-center gap-2 whitespace-nowrap">
+          <span class="nav-icon"><i class="fas fa-user-nurse text-xs"></i></span>
+          <span>التقييمات الفردية</span>
+        </button>
+        <button type="button" onclick="nav('settings')" data-page="settings" class="nav-btn nav-settings hidden px-3 py-2 rounded-xl flex items-center gap-2 whitespace-nowrap">
+          <span class="nav-icon"><i class="fas fa-sliders-h text-xs"></i></span>
+          <span>الإعدادات</span>
+        </button>
       </nav>
-      <button class="md:hidden text-2xl" onclick="document.getElementById('mobile-menu').classList.toggle('hidden')">
-        <i class="fas fa-bars"></i>
-      </button>
+
+      <!-- Utility Actions: Pill Search + Alert Bell + Logout -->
+      <div class="flex items-center gap-2">
+        <div class="hidden md:block relative w-48 xl:w-56">
+          <input type="text" id="header-quick-search" class="pill-search w-full py-1.5 pr-9 pl-4 text-xs text-slate-700 placeholder-slate-400" placeholder="بحث سريع في التقارير..." onkeydown="if(event.key==='Enter') handleHeaderQuickSearch(this.value)">
+          <i class="fas fa-search absolute right-3 top-2.5 text-slate-400 text-xs pointer-events-none"></i>
+        </div>
+
+        <!-- Wired Alert Bell with Concentric Pulse Ring -->
+        <div class="relative">
+          <button type="button" id="alert-bell-btn" onclick="toggleAlertPopover()" class="alert-bell-btn action-icon-btn w-9 h-9 rounded-full bg-[#F1F5F9] hover:bg-[#E2E8F0]/80 text-slate-600 flex items-center justify-center transition" title="تنبيهات الامتثال">
+            <span class="action-icon"><i class="fas fa-bell text-sm"></i></span>
+            <span id="alert-bell-dot" class="alert-bell-dot hidden"></span>
+          </button>
+          <div id="alert-bell-popover" class="hidden absolute left-0 mt-2 w-72 sm:w-80 bento-card p-3.5 z-50 shadow-lg">
+            <div class="flex items-center justify-between border-b border-[#E2E8F0] pb-2 mb-2.5">
+              <span class="text-xs font-bold text-slate-900 flex items-center gap-1.5">
+                <i class="fas fa-shield-alt text-[#0D9488]"></i> تنبيهات جودة الامتثال
+              </span>
+              <button type="button" onclick="hide('alert-bell-popover')" class="text-slate-400 hover:text-slate-600 text-xs p-1"><i class="fas fa-times"></i></button>
+            </div>
+            <div id="alert-bell-list" class="space-y-2 max-h-60 overflow-y-auto text-xs text-slate-600">
+              <p class="text-center text-slate-400 py-3">جاري فحص حالة المؤشرات...</p>
+            </div>
+          </div>
+        </div>
+
+        <button type="button" onclick="logout()" class="hidden md:inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-semibold text-[#EF4444] bg-[#FEE2E2]/60 hover:bg-[#FEE2E2] transition whitespace-nowrap">
+          <i class="fas fa-sign-out-alt"></i>
+          <span>خروج</span>
+        </button>
+
+        <button type="button" class="lg:hidden w-9 h-9 rounded-xl bg-[#F1F5F9] text-slate-700 flex items-center justify-center text-lg" onclick="document.getElementById('mobile-menu').classList.toggle('hidden')" aria-label="القائمة">
+          <i class="fas fa-bars"></i>
+        </button>
+      </div>
     </div>
+
     <!-- Mobile Menu -->
-    <div id="mobile-menu" class="hidden bg-indigo-800 text-white md:hidden">
-      <button onclick="nav('home')" class="block w-full text-right p-3 border-b border-indigo-700">لوحة القيادة</button>
-      <button onclick="nav('entry')" class="nav-entry hidden block w-full text-right p-3 border-b border-indigo-700">إدخال تقييم</button>
-      <button onclick="nav('report')" class="block w-full text-right p-3 border-b border-indigo-700">التقارير</button>
-      <button onclick="nav('individuals')" class="block w-full text-right p-3 border-b border-indigo-700">التقييمات الفردية</button>
-      <button onclick="nav('settings')" class="nav-settings hidden block w-full text-right p-3 border-b border-indigo-700 text-yellow-300">الإعدادات</button>
-      <button onclick="logout()" class="block w-full text-right p-3 text-red-300"><i class="fas fa-sign-out-alt ml-2"></i>تسجيل خروج</button>
+    <div id="mobile-menu" class="hidden bg-white border-t border-[#E2E8F0] text-slate-800 lg:hidden shadow-md">
+      <div class="p-3 border-b border-[#E2E8F0] md:hidden">
+        <div class="relative">
+          <input type="text" class="pill-search w-full py-2 pr-9 pl-4 text-xs" placeholder="بحث سريع في التقارير..." onkeydown="if(event.key==='Enter') handleHeaderQuickSearch(this.value)">
+          <i class="fas fa-search absolute right-3 top-2.5 text-slate-400 text-xs"></i>
+        </div>
+      </div>
+      <button onclick="nav('home')" class="block w-full text-right px-4 py-3 text-sm font-semibold border-b border-[#E2E8F0] hover:bg-[#F8FAFC] hover:text-[#0D9488]">لوحة القيادة</button>
+      <button onclick="nav('entry')" class="nav-entry hidden block w-full text-right px-4 py-3 text-sm font-semibold border-b border-[#E2E8F0] hover:bg-[#F8FAFC] hover:text-[#0D9488]">إدخال تقييم</button>
+      <button onclick="nav('report')" class="block w-full text-right px-4 py-3 text-sm font-semibold border-b border-[#E2E8F0] hover:bg-[#F8FAFC] hover:text-[#0D9488]">التقارير</button>
+      <button onclick="nav('individuals')" class="block w-full text-right px-4 py-3 text-sm font-semibold border-b border-[#E2E8F0] hover:bg-[#F8FAFC] hover:text-[#0D9488]">التقييمات الفردية</button>
+      <button onclick="nav('settings')" class="nav-settings hidden block w-full text-right px-4 py-3 text-sm font-semibold border-b border-[#E2E8F0] hover:bg-[#F8FAFC] hover:text-[#0D9488]">الإعدادات</button>
+      <button onclick="logout()" class="block w-full text-right px-4 py-3 text-sm font-semibold text-[#EF4444] hover:bg-[#FEE2E2]/40"><i class="fas fa-sign-out-alt ml-2"></i>تسجيل خروج</button>
     </div>
   </header>
 
   <!-- Main Content -->
-  <main id="main-content" class="flex-1 overflow-y-auto p-4 md:p-8 relative">
+  <main id="main-content" class="flex-1 overflow-y-auto p-3 md:p-6 relative">
     
-    <!-- Loader -->
-    <div id="loader" class="hidden absolute inset-0 bg-white bg-opacity-80 z-50 flex flex-col justify-center items-center">
-      <div class="loader mb-2"></div>
-      <p class="text-indigo-900 font-bold">جاري العمل...</p>
+    <!-- Medical ECG & Shield Loader -->
+    <div id="loader" class="hidden fixed inset-0 bg-white/85 backdrop-blur-xs z-[110] flex flex-col justify-center items-center no-print">
+      <div class="medical-shield-pulse relative w-20 h-20 flex items-center justify-center mb-3">
+        <svg viewBox="0 0 64 64" class="w-16 h-16" fill="none" xmlns="http://www.w3.org/2000/svg">
+          <path d="M32 6L12 14V30C12 43.25 20.5 54.4 32 58C43.5 54.4 52 43.25 52 30V14L32 6Z" fill="#0D9488" fill-opacity="0.1" stroke="#0D9488" stroke-width="2.5" stroke-linejoin="round"/>
+          <path class="ecg-loader-line" d="M17 33H24L27.5 23L32 42L36.5 28L39.5 33H47" stroke="#0D9488" stroke-width="2.75" stroke-linecap="round" stroke-linejoin="round"/>
+        </svg>
+      </div>
+      <p class="text-[#0D9488] font-bold text-sm tracking-wide">جاري المعالجة السريرية...</p>
     </div>
 
     <!-- Login Modal -->
-    <div id="login-modal" class="fixed inset-0 bg-indigo-950/80 backdrop-blur-xs z-[100] flex justify-center items-center p-4">
-       <div class="bg-white rounded-2xl shadow-2xl w-full max-w-sm p-8 text-center border border-gray-100">
-          <div class="flex justify-center mb-4">
-             <img src="/favicon.svg" alt="لوجو النظام" class="w-20 h-20 drop-shadow-md rounded-2xl">
+    <div id="login-modal" class="fixed inset-0 bg-slate-900/50 backdrop-blur-sm z-[100] flex justify-center items-center p-4 no-print">
+       <div class="bento-card w-full max-w-sm p-8 text-center shadow-xl">
+          <div class="w-16 h-16 mx-auto mb-4 rounded-2xl bg-[#0D9488]/10 border border-[#0D9488]/20 flex items-center justify-center p-2">
+             <img src="/favicon.svg" alt="لوجو النظام" class="w-12 h-12 object-contain">
           </div>
-          <h2 class="text-2xl font-bold mb-1 text-gray-800">تسجيل الدخول</h2>
-          <p class="text-xs text-gray-500 mb-6 font-medium">نظام مؤشرات الأداء - مكافحة العدوى</p>
-          <input type="password" id="login-pass" class="w-full border border-gray-300 p-3 rounded-lg mb-4 text-center text-lg focus:outline-hidden focus:border-indigo-600 transition shadow-xs" placeholder="كلمة المرور" onkeypress="if(event.key === 'Enter') doLogin()">
-          <button onclick="doLogin()" class="w-full bg-indigo-600 text-white py-3 rounded-lg font-bold hover:bg-indigo-700 transition shadow-md hover:shadow-lg">دخول</button>
-          <p id="login-error" class="text-red-500 mt-3 hidden text-sm font-bold">كلمة المرور غير صحيحة</p>
+          <h2 class="text-xl font-bold mb-1 text-slate-900">تسجيل الدخول</h2>
+          <p class="text-xs text-slate-500 mb-6 font-medium">نظام مؤشرات الأداء - مكافحة العدوى</p>
+          <input type="password" id="login-pass" class="w-full border border-[#E2E8F0] bg-[#F8FAFC] p-3 rounded-xl mb-4 text-center text-base focus:outline-none focus:bg-white focus:border-[#0D9488] focus:ring-2 focus:ring-[#0D9488]/20 transition" placeholder="كلمة المرور" onkeypress="if(event.key === 'Enter') doLogin()">
+          <button onclick="doLogin()" class="w-full bg-[#0D9488] text-white py-3 rounded-xl font-bold hover:bg-[#0F766E] transition shadow-sm">دخول</button>
+          <p id="login-error" class="text-[#EF4444] bg-[#FEE2E2] px-3 py-1.5 rounded-full mt-3 hidden text-xs font-bold">كلمة المرور غير صحيحة</p>
        </div>
     </div>
     
     <!-- General Multi-Select Modal (Departments/Categories) -->
-    <div id="select-modal" class="hidden fixed inset-0 bg-black bg-opacity-60 z-[70] flex justify-center items-center p-4">
-       <div class="bg-white rounded-lg shadow-xl w-full max-w-md p-6">
-          <h3 id="select-modal-title" class="text-lg font-bold mb-4 text-indigo-900 border-b pb-2">...</h3>
+    <div id="select-modal" class="hidden fixed inset-0 bg-slate-900/50 backdrop-blur-xs z-[70] flex justify-center items-center p-4 no-print">
+       <div class="bento-card w-full max-w-md p-6 shadow-xl">
+          <h3 id="select-modal-title" class="text-base font-bold mb-4 text-slate-900 border-b border-[#E2E8F0] pb-3">...</h3>
           <div id="select-checkboxes" class="grid grid-cols-2 gap-3 mb-6 max-h-60 overflow-y-auto">
              <!-- Checkboxes will be injected here -->
           </div>
           <div class="flex gap-2">
-            <button onclick="saveSelection()" class="flex-1 bg-indigo-600 text-white py-2 rounded font-bold hover:bg-indigo-700">حفظ الاختيار</button>
-            <button onclick="document.getElementById('select-modal').classList.add('hidden')" class="flex-1 bg-gray-200 text-gray-800 py-2 rounded font-bold hover:bg-gray-300">إلغاء</button>
+            <button onclick="saveSelection()" class="flex-1 bg-[#0D9488] text-white py-2.5 rounded-xl font-bold text-sm hover:bg-[#0F766E] transition">حفظ الاختيار</button>
+            <button onclick="document.getElementById('select-modal').classList.add('hidden')" class="flex-1 bg-[#F1F5F9] text-slate-700 py-2.5 rounded-xl font-bold text-sm hover:bg-slate-200 transition">إلغاء</button>
           </div>
        </div>
     </div>
 
     <!-- Edit Report Modal (تعديل تقرير المؤشر) -->
-    <div id="edit-report-modal" class="hidden fixed inset-0 bg-black/60 backdrop-blur-xs z-[80] flex justify-center items-center p-3 md:p-6 overflow-y-auto">
-       <div class="bg-white rounded-xl shadow-2xl w-full max-w-4xl max-h-[90vh] flex flex-col border border-gray-200 overflow-hidden">
+    <div id="edit-report-modal" class="hidden fixed inset-0 bg-slate-900/55 backdrop-blur-xs z-[80] flex justify-center items-center p-3 md:p-6 overflow-y-auto no-print">
+       <div class="bento-card w-full max-w-4xl max-h-[90vh] flex flex-col overflow-hidden shadow-2xl">
           <!-- Modal Header -->
-          <div class="bg-indigo-900 text-white p-4 flex justify-between items-center gap-3">
-             <div>
-                <h3 id="edit-modal-title" class="text-lg font-bold">تعديل تقرير المؤشر</h3>
-                <p id="edit-modal-subtitle" class="text-xs text-indigo-200 mt-0.5"></p>
+          <div class="bg-slate-900 text-white p-4 flex justify-between items-center gap-3">
+             <div class="flex items-center gap-3">
+                <span class="w-9 h-9 rounded-xl bg-[#0D9488]/20 border border-[#0D9488]/40 text-[#5EEAD4] flex items-center justify-center">
+                   <i class="fas fa-edit text-sm"></i>
+                </span>
+                <div>
+                   <h3 id="edit-modal-title" class="text-base md:text-lg font-bold">تعديل تقرير المؤشر</h3>
+                   <p id="edit-modal-subtitle" class="text-xs text-slate-300 mt-0.5 tabular-nums"></p>
+                </div>
              </div>
              <div class="flex items-center gap-2">
-                <button type="button" onclick="openMultiplyFromCurrentEdit()" class="bg-purple-600 hover:bg-purple-700 text-white text-xs font-bold px-3 py-1.5 rounded-lg shadow-xs transition flex items-center gap-1.5 border border-purple-400/40" title="مضاعفة جلسات هذا المؤشر في نفس الشهر">
+                <button type="button" onclick="openMultiplyFromCurrentEdit()" class="bg-[#0284C7] hover:bg-[#0369A1] text-white text-xs font-bold px-3 py-1.5 rounded-xl transition flex items-center gap-1.5 whitespace-nowrap" title="مضاعفة جلسات هذا المؤشر في نفس الشهر">
                    <i class="fas fa-layer-group text-[11px]"></i> مضاعفة الجلسات
                 </button>
-                <button onclick="closeEditReportModal()" class="text-white hover:text-red-300 text-2xl font-bold p-1 leading-none">&times;</button>
+                <button onclick="closeEditReportModal()" class="text-slate-300 hover:text-white text-2xl font-bold p-1 leading-none">&times;</button>
              </div>
           </div>
 
           <!-- Modal Live Stats Bar -->
-          <div class="p-3 bg-slate-50 border-b flex flex-wrap items-center justify-between gap-3 text-sm">
+          <div class="p-3 bg-[#F8FAFC] border-b border-[#E2E8F0] flex flex-wrap items-center justify-between gap-3 text-sm">
              <div class="flex items-center gap-3">
-                <span class="text-gray-700 font-bold text-xs">نسبة الامتثال الحالية:</span>
-                <span id="edit-modal-live-score" class="px-3 py-1 rounded-full font-black text-sm bg-indigo-100 text-indigo-800 border border-indigo-200">0%</span>
-                <span id="edit-modal-counts" class="text-xs text-gray-500">(0 مطابقة من 0)</span>
+                <span class="text-slate-700 font-semibold text-xs">نسبة الامتثال الحالية:</span>
+                <span id="edit-modal-live-score" class="tabular-nums px-3 py-1 rounded-full font-bold text-xs bg-[#DCFCE7] text-[#10B981]">0%</span>
+                <span id="edit-modal-counts" class="text-xs text-slate-500 tabular-nums">(0 مطابقة من 0)</span>
              </div>
-             <div class="text-xs text-indigo-700 bg-indigo-50 border border-indigo-100 px-2.5 py-1 rounded">
+             <div class="text-xs text-[#0284C7] bg-[#0284C7]/10 px-3 py-1 rounded-full font-semibold">
                 <i class="fas fa-info-circle ml-1"></i> تتحدث النسبة فوراً عند تغيير أي إجابة
              </div>
           </div>
 
           <!-- Questions & Sessions List -->
           <div class="p-4 overflow-y-auto flex-1 max-h-[60vh]">
-             <div class="overflow-x-auto border border-gray-200 rounded-lg shadow-2xs">
+             <div class="overflow-x-auto border border-[#E2E8F0] rounded-xl">
                 <table class="w-full text-sm text-right border-collapse">
-                   <thead class="bg-slate-100 text-gray-700 text-xs font-bold border-b">
+                   <thead class="bg-[#F8FAFC] text-slate-700 text-xs font-bold border-b border-[#E2E8F0]">
                       <tr>
-                         <th class="p-2.5 border-l w-12 text-center">#</th>
-                         <th class="p-2.5 border-l">السؤال / البند</th>
-                         <th class="p-2.5 border-l w-28">القسم / الفئة</th>
-                         <th class="p-2.5 border-l w-56 text-center">الإجابة</th>
+                         <th class="p-2.5 border-l border-[#E2E8F0] w-12 text-center">#</th>
+                         <th class="p-2.5 border-l border-[#E2E8F0]">السؤال / البند</th>
+                         <th class="p-2.5 border-l border-[#E2E8F0] w-28">القسم / الفئة</th>
+                         <th class="p-2.5 border-l border-[#E2E8F0] w-56 text-center">الإجابة</th>
                          <th class="p-2.5 w-48">الملاحظة</th>
                       </tr>
                    </thead>
-                   <tbody id="edit-modal-records-body" class="divide-y divide-gray-100">
+                   <tbody id="edit-modal-records-body" class="divide-y divide-[#E2E8F0]">
                       <!-- Injected dynamically -->
                    </tbody>
                 </table>
@@ -285,11 +557,11 @@
           </div>
 
           <!-- Modal Footer -->
-          <div class="p-4 bg-gray-50 border-t flex justify-end gap-3">
-             <button onclick="saveReportEdits()" class="bg-indigo-600 text-white px-6 py-2.5 rounded-lg font-bold text-sm hover:bg-indigo-700 transition shadow flex items-center gap-1.5">
+          <div class="p-4 bg-[#F8FAFC] border-t border-[#E2E8F0] flex justify-end gap-3">
+             <button onclick="saveReportEdits()" class="bg-[#0D9488] text-white px-6 py-2.5 rounded-xl font-bold text-sm hover:bg-[#0F766E] transition shadow-xs flex items-center gap-1.5">
                 <i class="fas fa-save"></i> حفظ التعديلات
              </button>
-             <button onclick="closeEditReportModal()" class="bg-gray-200 text-gray-700 px-5 py-2.5 rounded-lg font-bold text-sm hover:bg-gray-300 transition">
+             <button onclick="closeEditReportModal()" class="bg-[#F1F5F9] text-slate-700 px-5 py-2.5 rounded-xl font-bold text-sm hover:bg-slate-200 transition">
                 إلغاء
              </button>
           </div>
@@ -297,71 +569,71 @@
     </div>
 
     <!-- Duplicate Report Modal (نسخ مؤشر والتعديل على الشهر والإحصائية) -->
-    <div id="duplicate-report-modal" class="hidden fixed inset-0 bg-black/60 backdrop-blur-xs z-[80] flex justify-center items-center p-3 md:p-6 overflow-y-auto">
-       <div class="bg-white rounded-xl shadow-2xl w-full max-w-4xl max-h-[92vh] flex flex-col border border-gray-200 overflow-hidden">
+    <div id="duplicate-report-modal" class="hidden fixed inset-0 bg-slate-900/55 backdrop-blur-xs z-[80] flex justify-center items-center p-3 md:p-6 overflow-y-auto no-print">
+       <div class="bento-card w-full max-w-4xl max-h-[92vh] flex flex-col overflow-hidden shadow-2xl">
           <!-- Modal Header -->
-          <div class="bg-emerald-900 text-white p-4 flex justify-between items-center">
+          <div class="bg-[#0D9488] text-white p-4 flex justify-between items-center">
              <div>
-                <h3 class="text-lg font-bold flex items-center gap-2">
-                   <i class="fas fa-copy text-emerald-300"></i>
+                <h3 class="text-base md:text-lg font-bold flex items-center gap-2">
+                   <i class="fas fa-copy text-teal-100"></i>
                    <span>نسخ تقرير مؤشر والتعديل عليه</span>
                 </h3>
-                <p class="text-xs text-emerald-200 mt-1">
+                <p class="text-xs text-teal-100 mt-1">
                    المؤشر الأصلي: <span id="dup-source-indicator-name" class="font-bold text-white"></span>
                    <span class="mx-1">|</span>
-                   الشهر الأصلي: <span id="dup-source-month-name" class="font-bold text-emerald-100 font-mono"></span>
+                   الشهر الأصلي: <span id="dup-source-month-name" class="font-bold text-white tabular-nums"></span>
                 </p>
              </div>
-             <button onclick="closeDuplicateReportModal()" class="text-white hover:text-red-300 text-2xl font-bold p-1 leading-none">&times;</button>
+             <button onclick="closeDuplicateReportModal()" class="text-white/80 hover:text-white text-2xl font-bold p-1 leading-none">&times;</button>
           </div>
 
           <!-- Configuration: Target Month & Date & Name -->
-          <div class="p-4 bg-emerald-50/50 border-b border-emerald-100">
+          <div class="p-4 bg-[#F8FAFC] border-b border-[#E2E8F0]">
              <div class="grid grid-cols-1 sm:grid-cols-3 gap-3">
                 <div>
-                   <label class="block text-xs font-bold text-gray-700 mb-1">
-                      الشهر الجديد المستهدف <span class="text-red-600">*</span>
+                   <label class="block text-xs font-bold text-slate-700 mb-1">
+                      الشهر الجديد المستهدف <span class="text-[#EF4444]">*</span>
                    </label>
-                   <input type="month" id="dup-target-month" class="input text-sm font-bold text-emerald-950 border-emerald-300 bg-white" onchange="onDuplicateTargetMonthChange()">
+                   <input type="month" id="dup-target-month" class="input text-sm font-bold text-slate-900 bg-white" onchange="onDuplicateTargetMonthChange()">
                 </div>
                 <div>
-                   <label class="block text-xs font-bold text-gray-700 mb-1">
+                   <label class="block text-xs font-bold text-slate-700 mb-1">
                       تاريخ التقييم للتقرير الجديد
                    </label>
                    <input type="date" id="dup-target-date" class="input text-sm bg-white">
                 </div>
                 <div>
-                   <label class="block text-xs font-bold text-gray-700 mb-1">
+                   <label class="block text-xs font-bold text-slate-700 mb-1">
                       اسم المؤشر للتقرير الجديد
                    </label>
                    <input type="text" id="dup-target-indicator" class="input text-sm bg-white font-semibold">
                 </div>
              </div>
-             <p class="text-[11px] text-emerald-800 mt-2 flex items-center gap-1.5">
-                <i class="fas fa-info-circle text-emerald-600"></i>
+             <p class="text-[11px] text-[#0D9488] mt-2 flex items-center gap-1.5 font-medium">
+                <i class="fas fa-info-circle"></i>
                 <span>سيتم إنشاء تقرير جديد مستقل للشهر المختار مع إمكانية تعديل الإجابات والملاحظات بالأسفل لتحديد إحصائيته بدقة.</span>
              </p>
           </div>
 
           <!-- Live Stats & Quick Actions Toolbar -->
-          <div class="p-3 bg-slate-50 border-b flex flex-wrap items-center justify-between gap-3 text-sm">
+          <div class="p-3 bg-white border-b border-[#E2E8F0] flex flex-wrap items-center justify-between gap-3 text-sm">
              <div class="flex items-center gap-2 flex-wrap">
-                <span class="text-xs font-bold text-gray-700">نسبة الامتثال للتقرير الجديد:</span>
-                <span id="dup-modal-live-score" class="px-3 py-1 rounded-full font-black text-sm bg-emerald-100 text-emerald-800 border border-emerald-200 shadow-2xs">0%</span>
-                <span id="dup-modal-counts" class="text-xs text-gray-500 font-medium">(0 مطابقة من 0)</span>
+                <span class="text-xs font-bold text-slate-700">نسبة الامتثال للتقرير الجديد:</span>
+                <span id="dup-modal-live-score" class="tabular-nums px-3 py-1 rounded-full font-bold text-xs bg-[#DCFCE7] text-[#10B981]">0%</span>
+                <span id="dup-modal-counts" class="text-xs text-slate-500 font-medium tabular-nums">(0 مطابقة من 0)</span>
              </div>
              <!-- Quick Actions -->
              <div class="flex items-center gap-1.5 flex-wrap">
-                <button type="button" onclick="setAllDuplicateAnswers('Yes')" class="bg-green-100 hover:bg-green-200 text-green-800 text-xs font-bold px-2.5 py-1 rounded transition border border-green-200 shadow-2xs" title="ضبط جميع البنود كـ 'نعم'">
+                <button type="button" onclick="setAllDuplicateAnswers('Yes')" class="bg-[#DCFCE7] hover:bg-emerald-200 text-[#047857] text-xs font-bold px-3 py-1 rounded-full transition" title="ضبط جميع البنود كـ 'نعم'">
                    <i class="fas fa-check-circle ml-1"></i> الكل نعم (100%)
                 </button>
-                <button type="button" onclick="setAllDuplicateAnswers('No')" class="bg-red-100 hover:bg-red-200 text-red-800 text-xs font-bold px-2.5 py-1 rounded transition border border-red-200 shadow-2xs" title="ضبط جميع البنود كـ 'لا'">
+                <button type="button" onclick="setAllDuplicateAnswers('No')" class="bg-[#FEE2E2] hover:bg-red-200 text-[#B91C1C] text-xs font-bold px-3 py-1 rounded-full transition" title="ضبط جميع البنود كـ 'لا'">
                    <i class="fas fa-times-circle ml-1"></i> الكل لا (0%)
                 </button>
-                <button type="button" onclick="resetDuplicateToOriginal()" class="bg-slate-200 hover:bg-slate-300 text-slate-800 text-xs font-bold px-2.5 py-1 rounded transition border border-slate-300 shadow-2xs" title="استعادة إجابات وملاحظات التقرير الأصلي">
+                <button type="button" onclick="resetDuplicateToOriginal()" class="bg-[#F1F5F9] hover:bg-slate-200 text-slate-700 text-xs font-bold px-3 py-1 rounded-full transition" title="استعادة إجابات وملاحظات التقرير الأصلي">
                    <i class="fas fa-undo ml-1"></i> استعادة الأصل
                 </button>
-                <button type="button" onclick="clearDuplicateNotes()" class="bg-amber-100 hover:bg-amber-200 text-amber-800 text-xs font-bold px-2.5 py-1 rounded transition border border-amber-200 shadow-2xs" title="تفريغ كافة الملاحظات المكتوبة">
+                <button type="button" onclick="clearDuplicateNotes()" class="bg-[#FEF3C7] hover:bg-amber-200 text-[#B45309] text-xs font-bold px-3 py-1 rounded-full transition" title="تفريغ كافة الملاحظات المكتوبة">
                    <i class="fas fa-eraser ml-1"></i> مسح الملاحظات
                 </button>
              </div>
@@ -369,18 +641,18 @@
 
           <!-- Questions & Evaluation Items to customize -->
           <div class="p-4 overflow-y-auto flex-1 max-h-[55vh]">
-             <div class="overflow-x-auto border border-gray-200 rounded-lg shadow-2xs">
+             <div class="overflow-x-auto border border-[#E2E8F0] rounded-xl">
                 <table class="w-full text-sm text-right border-collapse">
-                   <thead class="bg-slate-100 text-gray-700 text-xs font-bold border-b">
+                   <thead class="bg-[#F8FAFC] text-slate-700 text-xs font-bold border-b border-[#E2E8F0]">
                       <tr>
-                         <th class="p-2.5 border-l w-12 text-center">#</th>
-                         <th class="p-2.5 border-l">السؤال / بند التقييم</th>
-                         <th class="p-2.5 border-l w-28">القسم / الفئة</th>
-                         <th class="p-2.5 border-l w-56 text-center">الإجابة (الإحصائية)</th>
+                         <th class="p-2.5 border-l border-[#E2E8F0] w-12 text-center">#</th>
+                         <th class="p-2.5 border-l border-[#E2E8F0]">السؤال / بند التقييم</th>
+                         <th class="p-2.5 border-l border-[#E2E8F0] w-28">القسم / الفئة</th>
+                         <th class="p-2.5 border-l border-[#E2E8F0] w-56 text-center">الإجابة (الإحصائية)</th>
                          <th class="p-2.5 w-48">الملاحظة</th>
                       </tr>
                    </thead>
-                   <tbody id="dup-modal-records-body" class="divide-y divide-gray-100">
+                   <tbody id="dup-modal-records-body" class="divide-y divide-[#E2E8F0]">
                       <!-- Dynamically rendered -->
                    </tbody>
                 </table>
@@ -388,11 +660,11 @@
           </div>
 
           <!-- Modal Footer -->
-          <div class="p-4 bg-gray-50 border-t flex justify-end gap-3">
-             <button onclick="saveClonedReport()" class="bg-emerald-600 hover:bg-emerald-700 text-white px-6 py-2.5 rounded-lg font-bold text-sm transition shadow flex items-center gap-2">
+          <div class="p-4 bg-[#F8FAFC] border-t border-[#E2E8F0] flex justify-end gap-3">
+             <button onclick="saveClonedReport()" class="bg-[#0D9488] hover:bg-[#0F766E] text-white px-6 py-2.5 rounded-xl font-bold text-sm transition shadow-xs flex items-center gap-2">
                 <i class="fas fa-check-double"></i> حفظ وإنشاء التقرير المنسوخ
              </button>
-             <button onclick="closeDuplicateReportModal()" class="bg-gray-200 text-gray-700 px-5 py-2.5 rounded-lg font-bold text-sm hover:bg-gray-300 transition">
+             <button onclick="closeDuplicateReportModal()" class="bg-[#F1F5F9] text-slate-700 px-5 py-2.5 rounded-xl font-bold text-sm hover:bg-slate-200 transition">
                 إلغاء
              </button>
           </div>
@@ -400,156 +672,156 @@
     </div>
 
     <!-- Multiply Sessions Modal (مضاعفة عدد الجلسات المحفوظة للمؤشر في نفس الشهر) -->
-    <div id="multiply-sessions-modal" class="hidden fixed inset-0 bg-black/60 backdrop-blur-xs z-[85] flex justify-center items-center p-3 md:p-6 overflow-y-auto">
-       <div class="bg-white rounded-2xl shadow-2xl w-full max-w-2xl border border-purple-200 overflow-hidden flex flex-col my-auto">
+    <div id="multiply-sessions-modal" class="hidden fixed inset-0 bg-slate-900/55 backdrop-blur-xs z-[85] flex justify-center items-center p-3 md:p-6 overflow-y-auto no-print">
+       <div class="bento-card w-full max-w-2xl overflow-hidden flex flex-col my-auto shadow-2xl">
           <!-- Header -->
-          <div class="bg-gradient-to-r from-purple-900 via-indigo-900 to-purple-800 text-white p-4.5 flex justify-between items-center shadow-md">
+          <div class="bg-[#0284C7] text-white p-4 flex justify-between items-center">
              <div class="flex items-center gap-3">
-                <span class="w-10 h-10 rounded-xl bg-purple-700/80 border border-purple-400/30 flex items-center justify-center text-lg shadow-inner">
-                   <i class="fas fa-layer-group text-purple-200"></i>
+                <span class="w-10 h-10 rounded-xl bg-white/15 flex items-center justify-center text-lg">
+                   <i class="fas fa-layer-group text-white"></i>
                 </span>
                 <div>
-                   <h3 class="text-base sm:text-lg font-black tracking-tight flex items-center gap-2">
+                   <h3 class="text-base sm:text-lg font-bold flex items-center gap-2">
                       <span>مضاعفة الجلسات المحفوظة للمؤشر</span>
-                      <span class="bg-purple-600/70 text-purple-100 text-[10px] font-bold px-2 py-0.5 rounded-full border border-purple-400/40">في نفس الشهر</span>
+                      <span class="bg-white/20 text-white text-[10px] font-bold px-2.5 py-0.5 rounded-full">في نفس الشهر</span>
                    </h3>
-                   <p class="text-xs text-purple-200 mt-0.5 flex items-center gap-2 flex-wrap">
+                   <p class="text-xs text-sky-100 mt-0.5 flex items-center gap-2 flex-wrap">
                       <span>المؤشر: <strong id="mult-modal-indicator-text" class="text-white"></strong></span>
                       <span class="opacity-60">•</span>
-                      <span>الشهر: <strong id="mult-modal-month-text" class="text-purple-100 font-mono"></strong></span>
+                      <span>الشهر: <strong id="mult-modal-month-text" class="text-white tabular-nums"></strong></span>
                    </p>
                 </div>
              </div>
-             <button onclick="closeMultiplySessionsModal()" class="text-purple-200 hover:text-white hover:bg-purple-800/50 rounded-lg p-2 text-xl font-bold transition leading-none" title="إغلاق">&times;</button>
+             <button onclick="closeMultiplySessionsModal()" class="text-white/80 hover:text-white rounded-lg p-2 text-xl font-bold transition leading-none" title="إغلاق">&times;</button>
           </div>
 
-          <div class="p-5 space-y-5 overflow-y-auto max-h-[80vh]">
+          <div class="p-5 space-y-4 overflow-y-auto max-h-[80vh]">
              <!-- Current Sessions Info Card -->
-             <div class="bg-gradient-to-br from-purple-50 via-slate-50 to-indigo-50 border border-purple-200/80 rounded-xl p-4 shadow-2xs">
-                <div class="flex items-center justify-between mb-3 border-b border-purple-100 pb-2">
-                   <span class="text-xs font-bold text-purple-900 flex items-center gap-1.5">
-                      <i class="fas fa-info-circle text-purple-600"></i> الوضع الحالي للجلسات المسجلة:
+             <div class="bg-[#F8FAFC] border border-[#E2E8F0] rounded-2xl p-4">
+                <div class="flex items-center justify-between mb-3 border-b border-[#E2E8F0] pb-2">
+                   <span class="text-xs font-bold text-slate-800 flex items-center gap-1.5">
+                      <i class="fas fa-info-circle text-[#0284C7]"></i> الوضع الحالي للجلسات المسجلة:
                    </span>
-                   <span id="mult-current-score-badge" class="px-2.5 py-0.5 rounded-full text-xs font-black bg-emerald-100 text-emerald-800 border border-emerald-200">الالتزام: 0%</span>
+                   <span id="mult-current-score-badge" class="tabular-nums px-2.5 py-0.5 rounded-full text-xs font-bold bg-[#DCFCE7] text-[#10B981]">الالتزام: 0%</span>
                 </div>
                 <div class="grid grid-cols-2 sm:grid-cols-3 gap-3 text-center">
-                   <div class="bg-white p-2.5 rounded-lg border border-purple-100 shadow-2xs">
-                      <div class="text-[11px] text-gray-500 font-medium">الجلسات المحفوظة حالياً</div>
-                      <div id="mult-current-sessions-num" class="text-xl font-black text-purple-900 mt-0.5">0</div>
-                      <div id="mult-current-sessions-range" class="text-[10px] text-purple-600 font-semibold mt-0.5">-</div>
+                   <div class="bg-white p-3 rounded-xl border border-[#E2E8F0]">
+                      <div class="text-[11px] text-slate-500 font-medium">الجلسات المحفوظة حالياً</div>
+                      <div id="mult-current-sessions-num" class="tabular-nums text-xl font-bold text-[#0284C7] mt-0.5">0</div>
+                      <div id="mult-current-sessions-range" class="text-[10px] text-slate-500 font-medium mt-0.5">-</div>
                    </div>
-                   <div class="bg-white p-2.5 rounded-lg border border-purple-100 shadow-2xs">
-                      <div class="text-[11px] text-gray-500 font-medium">إجمالي بنود التقييم الحالية</div>
-                      <div id="mult-current-records-num" class="text-xl font-black text-indigo-900 mt-0.5">0</div>
-                      <div class="text-[10px] text-gray-400 mt-0.5">سجل / بند تقييم</div>
+                   <div class="bg-white p-3 rounded-xl border border-[#E2E8F0]">
+                      <div class="text-[11px] text-slate-500 font-medium">إجمالي بنود التقييم الحالية</div>
+                      <div id="mult-current-records-num" class="tabular-nums text-xl font-bold text-[#0D9488] mt-0.5">0</div>
+                      <div class="text-[10px] text-slate-400 mt-0.5">سجل / بند تقييم</div>
                    </div>
-                   <div class="col-span-2 sm:col-span-1 bg-white p-2.5 rounded-lg border border-purple-100 shadow-2xs">
-                      <div class="text-[11px] text-gray-500 font-medium">متوسط البنود للجلسة</div>
-                      <div id="mult-avg-records-per-session" class="text-xl font-black text-slate-800 mt-0.5">0</div>
-                      <div class="text-[10px] text-gray-400 mt-0.5">سؤال لكل جلسة</div>
+                   <div class="col-span-2 sm:col-span-1 bg-white p-3 rounded-xl border border-[#E2E8F0]">
+                      <div class="text-[11px] text-slate-500 font-medium">متوسط البنود للجلسة</div>
+                      <div id="mult-avg-records-per-session" class="tabular-nums text-xl font-bold text-slate-800 mt-0.5">0</div>
+                      <div class="text-[10px] text-slate-400 mt-0.5">سؤال لكل جلسة</div>
                    </div>
                 </div>
              </div>
 
              <!-- Multiplier Chooser -->
              <div>
-                <label class="block text-xs font-bold text-gray-800 mb-2">
+                <label class="block text-xs font-bold text-slate-800 mb-2">
                    اختر مقدار مضاعفة الجلسات المطلوب:
                 </label>
                 <div class="grid grid-cols-2 sm:grid-cols-4 gap-2.5">
-                   <button type="button" onclick="setMultiplyFactor(2)" id="btn-factor-2" class="mult-factor-btn p-3 rounded-xl border-2 border-purple-600 bg-purple-50 text-purple-950 font-bold text-center transition flex flex-col items-center justify-center gap-1 shadow-2xs">
-                      <span class="text-lg font-black text-purple-700">× 2</span>
+                   <button type="button" onclick="setMultiplyFactor(2)" id="btn-factor-2" class="mult-factor-btn p-3 rounded-xl border-2 border-[#0D9488] bg-[#0D9488]/10 text-slate-900 font-bold text-center transition flex flex-col items-center justify-center gap-1">
+                      <span class="tabular-nums text-lg font-bold text-[#0D9488]">× 2</span>
                       <span class="text-xs">الضعف</span>
-                      <span class="text-[10px] font-normal text-purple-600">إضافة 1× نفس الجلسات</span>
+                      <span class="text-[10px] font-normal text-slate-600">إضافة 1× نفس الجلسات</span>
                    </button>
-                   <button type="button" onclick="setMultiplyFactor(3)" id="btn-factor-3" class="mult-factor-btn p-3 rounded-xl border border-gray-200 bg-white hover:bg-purple-50/50 text-gray-700 font-bold text-center transition flex flex-col items-center justify-center gap-1 shadow-2xs">
-                      <span class="text-lg font-black text-indigo-600">× 3</span>
+                   <button type="button" onclick="setMultiplyFactor(3)" id="btn-factor-3" class="mult-factor-btn p-3 rounded-xl border border-[#E2E8F0] bg-white hover:bg-[#F8FAFC] text-slate-700 font-bold text-center transition flex flex-col items-center justify-center gap-1">
+                      <span class="tabular-nums text-lg font-bold text-[#0284C7]">× 3</span>
                       <span class="text-xs">3 أضعاف</span>
-                      <span class="text-[10px] font-normal text-gray-500">إضافة 2× نفس الجلسات</span>
+                      <span class="text-[10px] font-normal text-slate-500">إضافة 2× نفس الجلسات</span>
                    </button>
-                   <button type="button" onclick="setMultiplyFactor(4)" id="btn-factor-4" class="mult-factor-btn p-3 rounded-xl border border-gray-200 bg-white hover:bg-purple-50/50 text-gray-700 font-bold text-center transition flex flex-col items-center justify-center gap-1 shadow-2xs">
-                      <span class="text-lg font-black text-indigo-600">× 4</span>
+                   <button type="button" onclick="setMultiplyFactor(4)" id="btn-factor-4" class="mult-factor-btn p-3 rounded-xl border border-[#E2E8F0] bg-white hover:bg-[#F8FAFC] text-slate-700 font-bold text-center transition flex flex-col items-center justify-center gap-1">
+                      <span class="tabular-nums text-lg font-bold text-[#0284C7]">× 4</span>
                       <span class="text-xs">4 أضعاف</span>
-                      <span class="text-[10px] font-normal text-gray-500">إضافة 3× نفس الجلسات</span>
+                      <span class="text-[10px] font-normal text-slate-500">إضافة 3× نفس الجلسات</span>
                    </button>
-                   <button type="button" onclick="setMultiplyFactor(5)" id="btn-factor-5" class="mult-factor-btn p-3 rounded-xl border border-gray-200 bg-white hover:bg-purple-50/50 text-gray-700 font-bold text-center transition flex flex-col items-center justify-center gap-1 shadow-2xs">
-                      <span class="text-lg font-black text-indigo-600">× 5</span>
+                   <button type="button" onclick="setMultiplyFactor(5)" id="btn-factor-5" class="mult-factor-btn p-3 rounded-xl border border-[#E2E8F0] bg-white hover:bg-[#F8FAFC] text-slate-700 font-bold text-center transition flex flex-col items-center justify-center gap-1">
+                      <span class="tabular-nums text-lg font-bold text-[#0284C7]">× 5</span>
                       <span class="text-xs">5 أضعاف</span>
-                      <span class="text-[10px] font-normal text-gray-500">إضافة 4× نفس الجلسات</span>
+                      <span class="text-[10px] font-normal text-slate-500">إضافة 4× نفس الجلسات</span>
                    </button>
                 </div>
 
-                <div class="mt-3 flex items-center gap-3 bg-gray-50 p-2.5 rounded-lg border border-gray-200">
-                   <span class="text-xs font-bold text-gray-700 whitespace-nowrap">أو حدد مضاعفاً مخصصاً:</span>
+                <div class="mt-3 flex items-center gap-3 bg-[#F8FAFC] p-2.5 rounded-xl border border-[#E2E8F0]">
+                   <span class="text-xs font-bold text-slate-700 whitespace-nowrap">أو حدد مضاعفاً مخصصاً:</span>
                    <div class="flex items-center gap-1.5 flex-1 max-w-[160px]">
-                       <span class="text-sm font-black text-purple-700">×</span>
-                       <input type="number" id="mult-custom-factor-input" min="2" max="25" value="2" class="input py-1 px-2.5 text-center font-bold text-sm text-purple-950 border-purple-300 w-full" oninput="onCustomFactorChange(this.value)">
+                       <span class="text-sm font-bold text-[#0D9488]">×</span>
+                       <input type="number" id="mult-custom-factor-input" min="2" max="25" value="2" class="input py-1 px-2.5 text-center font-bold text-sm text-slate-900 tabular-nums w-full" oninput="onCustomFactorChange(this.value)">
                     </div>
-                    <span class="text-[11px] text-gray-500">(بين 2 إلى 25 ضعف)</span>
+                    <span class="text-[11px] text-slate-500">(بين 2 إلى 25 ضعف)</span>
                  </div>
               </div>
 
               <!-- Live Output Calculation Result Card -->
-              <div class="bg-gradient-to-r from-purple-900 via-indigo-900 to-purple-950 text-white p-4 rounded-xl shadow-md border border-purple-700">
-                 <div class="flex items-center gap-2 mb-2 text-xs font-bold text-purple-200">
-                    <i class="fas fa-calculator text-purple-300"></i>
+              <div class="bg-slate-900 text-white p-4 rounded-2xl">
+                 <div class="flex items-center gap-2 mb-2 text-xs font-bold text-teal-300">
+                    <i class="fas fa-calculator"></i>
                     <span>نتيجة المضاعفة المباشرة في نفس الشهر:</span>
                  </div>
                  <div class="grid grid-cols-1 sm:grid-cols-3 gap-3 pt-1">
-                    <div class="bg-white/10 p-2 rounded-lg border border-white/15">
-                       <div class="text-[10px] text-purple-200">جلسات جديدة ستُضاف</div>
-                       <div id="mult-preview-added-sessions" class="text-xl font-black text-amber-300 mt-0.5">+0</div>
-                       <div id="mult-preview-added-range" class="text-[10px] text-purple-200 font-mono mt-0.5">-</div>
+                    <div class="bg-white/10 p-2.5 rounded-xl border border-white/10">
+                       <div class="text-[10px] text-slate-300">جلسات جديدة ستُضاف</div>
+                       <div id="mult-preview-added-sessions" class="tabular-nums text-xl font-bold text-[#F59E0B] mt-0.5">+0</div>
+                       <div id="mult-preview-added-range" class="text-[10px] text-slate-300 tabular-nums mt-0.5">-</div>
                     </div>
-                    <div class="bg-white/10 p-2 rounded-lg border border-white/15">
-                       <div class="text-[10px] text-purple-200">إجمالي الجلسات النهائي</div>
-                       <div id="mult-preview-total-sessions" class="text-xl font-black text-emerald-300 mt-0.5">0</div>
+                    <div class="bg-white/10 p-2.5 rounded-xl border border-white/10">
+                       <div class="text-[10px] text-slate-300">إجمالي الجلسات النهائي</div>
+                       <div id="mult-preview-total-sessions" class="tabular-nums text-xl font-bold text-[#10B981] mt-0.5">0</div>
                        <div class="text-[10px] text-emerald-200 mt-0.5">جلسة مسجلة بالشهر</div>
                     </div>
-                    <div class="bg-white/10 p-2 rounded-lg border border-white/15">
-                       <div class="text-[10px] text-purple-200">إجمالي التقييمات النهائي</div>
-                       <div id="mult-preview-total-records" class="text-xl font-black text-white mt-0.5">0</div>
-                       <div class="text-[10px] text-purple-200 mt-0.5">تقييم معتمد</div>
+                    <div class="bg-white/10 p-2.5 rounded-xl border border-white/10">
+                       <div class="text-[10px] text-slate-300">إجمالي التقييمات النهائي</div>
+                       <div id="mult-preview-total-records" class="tabular-nums text-xl font-bold text-white mt-0.5">0</div>
+                       <div class="text-[10px] text-slate-300 mt-0.5">تقييم معتمد</div>
                     </div>
                  </div>
               </div>
 
               <!-- Options & Preferences -->
               <div class="space-y-3 pt-1">
-                 <div class="text-xs font-bold text-gray-800 flex items-center gap-1.5">
-                    <i class="fas fa-sliders-h text-purple-600"></i>
+                 <div class="text-xs font-bold text-slate-800 flex items-center gap-1.5">
+                    <i class="fas fa-sliders-h text-[#0D9488]"></i>
                     <span>خيارات التخصيص للجلسات الجديدة:</span>
                  </div>
 
                  <!-- Date options -->
-                 <div class="bg-gray-50 p-3 rounded-lg border border-gray-200 text-xs space-y-2">
-                    <div class="font-bold text-gray-700 mb-1">تاريخ الجلسات الجديدة المضاعفة:</div>
+                 <div class="bg-[#F8FAFC] p-3 rounded-xl border border-[#E2E8F0] text-xs space-y-2">
+                    <div class="font-bold text-slate-700 mb-1">تاريخ الجلسات الجديدة المضاعفة:</div>
                     <div class="space-y-1.5">
-                       <label class="flex items-center gap-2 cursor-pointer font-medium text-gray-800">
-                          <input type="radio" name="mult-date-mode" value="original" checked class="accent-purple-600" onchange="toggleMultCustomDate(false)">
+                       <label class="flex items-center gap-2 cursor-pointer font-medium text-slate-800">
+                          <input type="radio" name="mult-date-mode" value="original" checked class="accent-[#0D9488]" onchange="toggleMultCustomDate(false)">
                           <span>الاحتفاظ بنفس تواريخ الجلسات الأصلية (موصى به لانتظام الجدول)</span>
                        </label>
-                       <label class="flex items-center gap-2 cursor-pointer font-medium text-gray-800">
-                          <input type="radio" name="mult-date-mode" value="today" class="accent-purple-600" onchange="toggleMultCustomDate(false)">
+                       <label class="flex items-center gap-2 cursor-pointer font-medium text-slate-800">
+                          <input type="radio" name="mult-date-mode" value="today" class="accent-[#0D9488]" onchange="toggleMultCustomDate(false)">
                           <span>تسجيل الجلسات الجديدة بتاريخ اليوم</span>
                        </label>
                        <div class="flex items-center gap-2 flex-wrap">
-                          <label class="flex items-center gap-2 cursor-pointer font-medium text-gray-800">
-                             <input type="radio" name="mult-date-mode" value="custom" class="accent-purple-600" onchange="toggleMultCustomDate(true)">
+                          <label class="flex items-center gap-2 cursor-pointer font-medium text-slate-800">
+                             <input type="radio" name="mult-date-mode" value="custom" class="accent-[#0D9488]" onchange="toggleMultCustomDate(true)">
                              <span>تحديد تاريخ محدد للجلسات الجديدة:</span>
                           </label>
-                          <input type="date" id="mult-custom-date" disabled class="input py-1 px-2 text-xs w-auto max-w-[170px] bg-white border-gray-300">
+                          <input type="date" id="mult-custom-date" disabled class="input py-1 px-2 text-xs w-auto max-w-[170px] bg-white">
                        </div>
                     </div>
                  </div>
 
                  <!-- Variation option -->
-                 <div class="bg-gray-50 p-3 rounded-lg border border-gray-200 text-xs">
+                 <div class="bg-[#F8FAFC] p-3 rounded-xl border border-[#E2E8F0] text-xs">
                     <label class="flex items-start gap-2.5 cursor-pointer">
-                       <input type="checkbox" id="mult-slight-variation" class="accent-purple-600 w-4 h-4 mt-0.5 rounded cursor-pointer">
+                       <input type="checkbox" id="mult-slight-variation" class="accent-[#0D9488] w-4 h-4 mt-0.5 rounded cursor-pointer">
                        <div>
-                          <span class="font-bold text-gray-800">إضافة تنوع واقعي بسيط جداً (±3%) في بعض إجابات الجلسات الجديدة</span>
-                          <p class="text-[11px] text-gray-500 mt-0.5">عند عدم التحديد، يتم نسخ التقييمات بنسبة تطابق 100% مع الجلسات الأصلية بالضبط.</p>
+                          <span class="font-bold text-slate-800">إضافة تنوع واقعي بسيط جداً (±3%) في بعض إجابات الجلسات الجديدة</span>
+                          <p class="text-[11px] text-slate-500 mt-0.5">عند عدم التحديد، يتم نسخ التقييمات بنسبة تطابق 100% مع الجلسات الأصلية بالضبط.</p>
                        </div>
                     </label>
                  </div>
@@ -557,11 +829,11 @@
            </div>
 
            <!-- Footer Actions -->
-           <div class="p-4 bg-slate-50 border-t border-gray-200 flex flex-wrap justify-between items-center gap-3">
-              <button type="button" onclick="closeMultiplySessionsModal()" class="bg-gray-200 hover:bg-gray-300 text-gray-700 px-5 py-2.5 rounded-xl font-bold text-sm transition">
+           <div class="p-4 bg-[#F8FAFC] border-t border-[#E2E8F0] flex flex-wrap justify-between items-center gap-3">
+              <button type="button" onclick="closeMultiplySessionsModal()" class="bg-[#F1F5F9] hover:bg-slate-200 text-slate-700 px-5 py-2.5 rounded-xl font-bold text-sm transition">
                  إلغاء
               </button>
-              <button type="button" onclick="confirmMultiplySessions()" class="bg-gradient-to-r from-purple-700 to-indigo-700 hover:from-purple-800 hover:to-indigo-800 text-white font-black px-6 py-2.5 rounded-xl text-sm shadow-md transition flex items-center gap-2">
+              <button type="button" onclick="confirmMultiplySessions()" class="bg-[#0D9488] hover:bg-[#0F766E] text-white font-bold px-6 py-2.5 rounded-xl text-sm shadow-xs transition flex items-center gap-2">
                  <i class="fas fa-layer-group"></i>
                  <span id="mult-btn-confirm-text">تأكيد مضاعفة الجلسات الآن</span>
               </button>
@@ -570,59 +842,59 @@
      </div>
 
      <!-- Rename Indicator Modal (تعديل اسم المؤشر في الإعدادات) -->
-    <div id="rename-indicator-modal" class="hidden fixed inset-0 bg-black/60 backdrop-blur-xs z-[85] flex justify-center items-center p-4">
-       <div class="bg-white rounded-xl shadow-2xl w-full max-w-lg p-6 border border-gray-200">
-          <div class="flex justify-between items-center border-b pb-3 mb-4">
+    <div id="rename-indicator-modal" class="hidden fixed inset-0 bg-slate-900/55 backdrop-blur-xs z-[85] flex justify-center items-center p-4 no-print">
+       <div class="bento-card w-full max-w-lg p-6 shadow-2xl">
+          <div class="flex justify-between items-center border-b border-[#E2E8F0] pb-3 mb-4">
              <div class="flex items-center gap-2.5">
-                <span class="w-9 h-9 rounded-lg bg-amber-100 text-amber-700 flex items-center justify-center text-lg shadow-2xs">
+                <span class="w-9 h-9 rounded-xl bg-[#FEF3C7] text-[#F59E0B] flex items-center justify-center text-base">
                    <i class="fas fa-edit"></i>
                 </span>
                 <div>
-                   <h3 class="text-base font-bold text-gray-900">تعديل اسم المؤشر</h3>
-                   <p class="text-[11px] text-gray-500">تحديث مسمى المؤشر في الإعدادات والتقارير</p>
+                   <h3 class="text-base font-bold text-slate-900">تعديل اسم المؤشر</h3>
+                   <p class="text-[11px] text-slate-500">تحديث مسمى المؤشر في الإعدادات والتقارير</p>
                 </div>
              </div>
-             <button onclick="closeRenameIndicatorModal()" class="text-gray-400 hover:text-gray-600 text-lg transition p-1">
+             <button onclick="closeRenameIndicatorModal()" class="text-slate-400 hover:text-slate-600 text-lg transition p-1">
                 <i class="fas fa-times"></i>
              </button>
           </div>
 
           <div class="space-y-4">
              <div>
-                <label class="block text-xs font-bold text-gray-700 mb-1.5">المؤشر الحالي المراد تعديله:</label>
-                <select id="rename-ind-select" class="input w-full font-bold text-indigo-950 bg-gray-50 border-gray-300" onchange="onRenameIndSelectChange()">
+                <label class="block text-xs font-bold text-slate-700 mb-1.5">المؤشر الحالي المراد تعديله:</label>
+                <select id="rename-ind-select" class="input w-full font-bold text-slate-900 bg-[#F8FAFC]" onchange="onRenameIndSelectChange()">
                    <!-- populated dynamically -->
                 </select>
              </div>
 
              <div>
-                <label class="block text-xs font-bold text-gray-700 mb-1.5">الاسم الجديد للمؤشر:</label>
-                <input type="text" id="rename-ind-new-name" placeholder="أدخل اسم المؤشر الجديد هنا..." class="input w-full text-sm font-bold text-gray-900 focus:border-amber-500 focus:ring-amber-500">
+                <label class="block text-xs font-bold text-slate-700 mb-1.5">الاسم الجديد للمؤشر:</label>
+                <input type="text" id="rename-ind-new-name" placeholder="أدخل اسم المؤشر الجديد هنا..." class="input w-full text-sm font-bold text-slate-900">
              </div>
 
-             <div class="bg-amber-50/80 border border-amber-200 rounded-lg p-3 text-xs text-amber-900 flex items-start gap-2.5">
-                <i class="fas fa-info-circle text-amber-600 mt-0.5 text-sm shrink-0"></i>
+             <div class="bg-[#FEF3C7]/60 border border-amber-200 rounded-xl p-3 text-xs text-amber-900 flex items-start gap-2.5">
+                <i class="fas fa-info-circle text-[#F59E0B] mt-0.5 text-sm shrink-0"></i>
                 <div class="leading-relaxed">
                    <span id="rename-ind-stats">سيتم تحديث كافة الأسئلة والإجراءات التابعة لهذا المؤشر في الإعدادات تلقائياً.</span>
                 </div>
              </div>
 
-             <div class="bg-slate-50 border border-slate-200 rounded-lg p-3">
-                <label class="flex items-start gap-2.5 cursor-pointer text-xs font-medium text-gray-800 select-none">
-                   <input type="checkbox" id="rename-ind-update-history" checked class="mt-0.5 w-4 h-4 text-indigo-600 rounded border-gray-300 focus:ring-indigo-500">
+             <div class="bg-[#F8FAFC] border border-[#E2E8F0] rounded-xl p-3">
+                <label class="flex items-start gap-2.5 cursor-pointer text-xs font-medium text-slate-800 select-none">
+                   <input type="checkbox" id="rename-ind-update-history" checked class="mt-0.5 w-4 h-4 accent-[#0D9488] rounded border-slate-300">
                    <div>
-                      <span class="font-bold text-gray-900">تحديث السجلات والتقارير المحفوظة مسبقاً في قاعدة البيانات</span>
-                      <p class="text-[11px] text-gray-500 mt-0.5 leading-normal">يحافظ على ظهور كافة التقييمات والتقارير الشهرية السابقة تحت الاسم الجديد للمؤشر بدلاً من فصلها.</p>
+                      <span class="font-bold text-slate-900">تحديث السجلات والتقارير المحفوظة مسبقاً في قاعدة البيانات</span>
+                      <p class="text-[11px] text-slate-500 mt-0.5 leading-normal">يحافظ على ظهور كافة التقييمات والتقارير الشهرية السابقة تحت الاسم الجديد للمؤشر بدلاً من فصلها.</p>
                     </div>
                 </label>
              </div>
           </div>
 
-          <div class="flex gap-2.5 mt-6 pt-4 border-t border-gray-100">
-             <button onclick="saveRenamedIndicator()" class="flex-1 bg-amber-600 hover:bg-amber-700 text-white py-2.5 px-4 rounded-lg font-bold text-sm shadow transition flex items-center justify-center gap-1.5">
+          <div class="flex gap-2.5 mt-6 pt-4 border-t border-[#E2E8F0]">
+             <button onclick="saveRenamedIndicator()" class="flex-1 bg-[#0D9488] hover:bg-[#0F766E] text-white py-2.5 px-4 rounded-xl font-bold text-sm shadow-xs transition flex items-center justify-center gap-1.5">
                 <i class="fas fa-check"></i> تطبيق التعديل وحفظ
              </button>
-             <button onclick="closeRenameIndicatorModal()" class="px-5 bg-gray-100 hover:bg-gray-200 text-gray-700 py-2.5 rounded-lg font-bold text-sm transition">
+             <button onclick="closeRenameIndicatorModal()" class="px-5 bg-[#F1F5F9] hover:bg-slate-200 text-slate-700 py-2.5 rounded-xl font-bold text-sm transition">
                 إلغاء
              </button>
           </div>
@@ -630,57 +902,57 @@
     </div>
 
     <!-- Add Procedure Modal (إضافة إجراء جديد للمؤشر والتقارير) -->
-    <div id="add-procedure-modal" class="hidden fixed inset-0 bg-black/60 backdrop-blur-xs z-[85] flex justify-center items-center p-4">
-       <div class="bg-white rounded-xl shadow-2xl w-full max-w-lg p-6 border border-gray-200">
-          <div class="flex justify-between items-center border-b pb-3 mb-4">
+    <div id="add-procedure-modal" class="hidden fixed inset-0 bg-slate-900/55 backdrop-blur-xs z-[85] flex justify-center items-center p-4 no-print">
+       <div class="bento-card w-full max-w-lg p-6 shadow-2xl">
+          <div class="flex justify-between items-center border-b border-[#E2E8F0] pb-3 mb-4">
              <div class="flex items-center gap-2.5">
-                <span class="w-9 h-9 rounded-lg bg-emerald-100 text-emerald-700 flex items-center justify-center text-lg shadow-2xs">
+                <span class="w-9 h-9 rounded-xl bg-[#DCFCE7] text-[#10B981] flex items-center justify-center text-base">
                    <i class="fas fa-stethoscope"></i>
                 </span>
                 <div>
-                   <h3 class="text-base font-bold text-gray-900">إضافة إجراء جديد للمؤشر</h3>
-                   <p class="text-[11px] text-gray-500">إدراج إجراء جديد وتضمينه تلقائياً في التقارير</p>
+                   <h3 class="text-base font-bold text-slate-900">إضافة إجراء جديد للمؤشر</h3>
+                   <p class="text-[11px] text-slate-500">إدراج إجراء جديد وتضمينه تلقائياً في التقارير</p>
                 </div>
              </div>
-             <button onclick="closeAddProcedureModal()" class="text-gray-400 hover:text-gray-600 text-lg transition p-1">
+             <button onclick="closeAddProcedureModal()" class="text-slate-400 hover:text-slate-600 text-lg transition p-1">
                 <i class="fas fa-times"></i>
              </button>
           </div>
 
           <div class="space-y-4">
              <div>
-                <label class="block text-xs font-bold text-gray-700 mb-1.5">المؤشر التابع له الإجراء:</label>
-                <select id="modal-proc-ind-select" class="input w-full font-bold text-indigo-950 bg-gray-50 border-gray-300">
+                <label class="block text-xs font-bold text-slate-700 mb-1.5">المؤشر التابع له الإجراء:</label>
+                <select id="modal-proc-ind-select" class="input w-full font-bold text-slate-900 bg-[#F8FAFC]">
                    <!-- populated dynamically -->
                 </select>
              </div>
 
              <div>
-                <label class="block text-xs font-bold text-gray-700 mb-1.5">اسم الإجراء الجديد <span class="text-red-500">*</span>:</label>
-                <input type="text" id="modal-proc-name" placeholder="مثال: غسيل الأيدي الجراحي، تطهير الأسطح..." class="input w-full text-sm font-bold text-gray-900 focus:border-emerald-500 focus:ring-emerald-500">
+                <label class="block text-xs font-bold text-slate-700 mb-1.5">اسم الإجراء الجديد <span class="text-[#EF4444]">*</span>:</label>
+                <input type="text" id="modal-proc-name" placeholder="مثال: غسيل الأيدي الجراحي، تطهير الأسطح..." class="input w-full text-sm font-bold text-slate-900">
              </div>
 
              <div>
-                <label class="block text-xs font-bold text-gray-700 mb-1.5">السؤال الأول التابع للإجراء <span class="text-red-500">*</span>:</label>
-                <input type="text" id="modal-proc-question" placeholder="مثال: هل تم الالتزام بتعقيم الأدوات قبل الاستخدام؟" class="input w-full text-sm text-gray-900 focus:border-emerald-500 focus:ring-emerald-500">
+                <label class="block text-xs font-bold text-slate-700 mb-1.5">السؤال الأول التابع للإجراء <span class="text-[#EF4444]">*</span>:</label>
+                <input type="text" id="modal-proc-question" placeholder="مثال: هل تم الالتزام بتعقيم الأدوات قبل الاستخدام؟" class="input w-full text-sm text-slate-900">
              </div>
 
-             <div class="bg-emerald-50/80 border border-emerald-200 rounded-lg p-3">
-                <label class="flex items-start gap-2.5 cursor-pointer text-xs font-medium text-gray-800 select-none">
-                   <input type="checkbox" id="modal-proc-add-to-reports" checked class="mt-0.5 w-4 h-4 text-emerald-600 rounded border-gray-300 focus:ring-emerald-500">
+             <div class="bg-[#DCFCE7]/60 border border-emerald-200 rounded-xl p-3">
+                <label class="flex items-start gap-2.5 cursor-pointer text-xs font-medium text-slate-800 select-none">
+                   <input type="checkbox" id="modal-proc-add-to-reports" checked class="mt-0.5 w-4 h-4 accent-[#0D9488] rounded border-slate-300">
                    <div>
-                      <span class="font-bold text-emerald-950">إضافة هذا الإجراء فوراً إلى جميع تقارير وجلسات المؤشر السابقة</span>
-                      <p class="text-[11px] text-emerald-700 mt-0.5 leading-normal">سيتم إدراج الإجراء في جداول نتائج الإجراءات والتقارير الشهرية المسجلة للمؤشر دون انتظار إدخال جديد.</p>
+                      <span class="font-bold text-slate-900">إضافة هذا الإجراء فوراً إلى جميع تقارير وجلسات المؤشر السابقة</span>
+                      <p class="text-[11px] text-emerald-800 mt-0.5 leading-normal">سيتم إدراج الإجراء في جداول نتائج الإجراءات والتقارير الشهرية المسجلة للمؤشر دون انتظار إدخال جديد.</p>
                    </div>
                 </label>
              </div>
           </div>
 
-          <div class="flex gap-2.5 mt-6 pt-4 border-t border-gray-100">
-             <button onclick="saveNewProcedureFromModal()" class="flex-1 bg-emerald-600 hover:bg-emerald-700 text-white py-2.5 px-4 rounded-lg font-bold text-sm shadow transition flex items-center justify-center gap-1.5">
+          <div class="flex gap-2.5 mt-6 pt-4 border-t border-[#E2E8F0]">
+             <button onclick="saveNewProcedureFromModal()" class="flex-1 bg-[#0D9488] hover:bg-[#0F766E] text-white py-2.5 px-4 rounded-xl font-bold text-sm shadow-xs transition flex items-center justify-center gap-1.5">
                 <i class="fas fa-check"></i> حفظ وإضافة الإجراء للتقارير
              </button>
-             <button onclick="closeAddProcedureModal()" class="px-5 bg-gray-100 hover:bg-gray-200 text-gray-700 py-2.5 rounded-lg font-bold text-sm transition">
+             <button onclick="closeAddProcedureModal()" class="px-5 bg-[#F1F5F9] hover:bg-slate-200 text-slate-700 py-2.5 rounded-xl font-bold text-sm transition">
                 إلغاء
              </button>
           </div>
@@ -688,74 +960,150 @@
     </div>
 
     <!-- 1. HOME (DASHBOARD) -->
-    <section id="home" class="page max-w-6xl mx-auto">
-      <!-- Filters -->
-      <div class="bg-white p-4 rounded-lg shadow-md mb-6 border-t-4 border-indigo-600">
-         <div class="flex flex-col md:flex-row gap-4 items-end">
+    <section id="home" class="page max-w-7xl mx-auto space-y-4">
+      <!-- Bento Filter Bar -->
+      <div class="bento-card p-4">
+         <div class="flex flex-col md:flex-row gap-3 md:gap-4 items-end">
             <div class="flex-1 w-full">
                <label class="label">المؤشر</label>
                <select id="dash-indicator" class="input" onchange="loadDashboard()"></select>
             </div>
             <div class="flex-1 w-full">
                <label class="label">الشهر</label>
-               <input type="month" id="dash-month" class="input" onchange="loadDashboard()">
+               <input type="month" id="dash-month" class="input tabular-nums" onchange="loadDashboard()">
             </div>
-            <div class="flex gap-2 w-full md:w-auto">
-               <button onclick="loadDashboard()" class="flex-1 md:flex-initial bg-indigo-600 text-white px-5 py-2 rounded-lg font-bold hover:bg-indigo-700 h-[42px] transition flex items-center justify-center gap-1.5 shadow">
-                  <i class="fas fa-sync-alt"></i> تحديث
+            <div class="flex gap-2.5 w-full md:w-auto">
+               <button onclick="loadDashboard()" class="action-icon-btn flex-1 md:flex-initial bg-[#0D9488] hover:bg-[#0F766E] text-white px-5 py-2.5 rounded-xl font-semibold text-sm h-[42px] transition flex items-center justify-center gap-2 whitespace-nowrap shadow-xs">
+                  <span class="action-icon"><i class="fas fa-sync-alt text-xs"></i></span>
+                  <span>تحديث</span>
                </button>
-               <button onclick="exportAllResultsToExcel()" class="flex-1 md:flex-initial bg-emerald-600 hover:bg-emerald-700 text-white px-5 py-2 rounded-lg font-bold hover:shadow-md h-[42px] transition flex items-center justify-center gap-2 shadow" title="حفظ جميع النتائج المدخلة للشهر والمؤشرات في شيت إكسيل">
-                  <i class="fas fa-file-excel text-base"></i> حفظ النتائج كشيت إكسيل
+               <button onclick="exportAllResultsToExcel()" class="action-icon-btn flex-1 md:flex-initial bg-[#F1F5F9] hover:bg-slate-200 text-slate-800 border border-[#E2E8F0] px-5 py-2.5 rounded-xl font-semibold text-sm h-[42px] transition flex items-center justify-center gap-2 whitespace-nowrap" title="حفظ جميع النتائج المدخلة للشهر والمؤشرات في شيت إكسيل">
+                  <span class="action-icon"><i class="fas fa-file-excel text-[#10B981]"></i></span>
+                  <span>حفظ النتائج كشيت إكسيل</span>
                </button>
             </div>
          </div>
       </div>
 
-      <!-- Stats Cards -->
-      <div class="grid grid-cols-1 mb-6">
-         <!-- Card: Overall Compliance Only -->
-         <div class="bg-gradient-to-br from-green-500 to-green-600 text-white p-6 rounded-lg shadow-md flex items-center justify-between">
+      <!-- Bento Hero KPI Grid -->
+      <div class="grid grid-cols-1 lg:grid-cols-3 gap-3 md:gap-4">
+         <!-- Primary Bento Card: Overall Compliance + Progress Bar + Animated Sparkline -->
+         <div class="bento-card p-5 lg:col-span-2 flex flex-col justify-between gap-4">
+            <div class="flex items-start justify-between gap-4">
+               <div class="flex items-center gap-3">
+                  <span class="w-11 h-11 rounded-2xl bg-[#0D9488]/10 text-[#0D9488] flex items-center justify-center text-lg flex-shrink-0">
+                     <i class="fas fa-shield-virus"></i>
+                  </span>
+                  <div>
+                     <p class="text-xs font-semibold text-slate-500">نسبة الالتزام العامة للمؤشر</p>
+                     <div class="flex items-baseline gap-2.5 mt-1">
+                        <h3 class="tabular-nums text-3xl md:text-4xl font-bold text-slate-900" id="stat-compliance">0%</h3>
+                        <span id="dash-compliance-pill" class="px-2.5 py-0.5 rounded-full text-xs font-semibold bg-[#F1F5F9] text-slate-600">بانتظار البيانات</span>
+                     </div>
+                  </div>
+               </div>
+
+               <!-- Minimalist SVG Sparkline (#0284C7) -->
+               <div class="hidden sm:flex flex-col items-end">
+                  <span class="text-[11px] font-semibold text-[#0284C7] mb-1">اتجاه الأداء السنوي</span>
+                  <svg id="dash-sparkline-svg" viewBox="0 0 180 48" class="w-44 h-12 overflow-visible" aria-hidden="true">
+                     <defs>
+                        <linearGradient id="sparkGrad" x1="0" y1="0" x2="0" y2="1">
+                           <stop offset="0%" stop-color="#0284C7" stop-opacity="0.22"/>
+                           <stop offset="100%" stop-color="#0284C7" stop-opacity="0"/>
+                        </linearGradient>
+                     </defs>
+                     <path id="dash-sparkline-area" class="sparkline-area" d="" fill="url(#sparkGrad)"/>
+                     <path id="dash-sparkline-path" class="sparkline-path" d="" fill="none" stroke="#0284C7" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/>
+                  </svg>
+               </div>
+            </div>
+
+            <!-- Smooth Medical Teal Progress Bar -->
             <div>
-               <p class="text-green-100 text-sm font-bold">نسبة الالتزام العامة</p>
-               <h3 class="text-3xl font-bold mt-1" id="stat-compliance">0%</h3>
+               <div class="flex justify-between items-center text-[11px] text-slate-500 mb-1.5 font-medium">
+                  <span>التقدم نحو المعيار القياسي (80%+)</span>
+                  <span id="dash-progress-label" class="tabular-nums font-semibold text-[#0D9488]">0%</span>
+               </div>
+               <div class="w-full h-2.5 bg-[#F1F5F9] rounded-full overflow-hidden">
+                  <div id="dash-compliance-bar" class="h-full bg-[#0D9488] rounded-full transition-all duration-500 ease-out" style="width: 0%"></div>
+               </div>
             </div>
-            <div class="bg-white bg-opacity-20 p-3 rounded-full">
-               <i class="fas fa-percent text-2xl"></i>
+         </div>
+
+         <!-- Secondary Bento Card: Real Metric Breakdown from getDashboardData -->
+         <div class="bento-card p-5 flex flex-col justify-between gap-4">
+            <div class="flex items-center justify-between">
+               <div class="flex items-center gap-2.5">
+                  <span class="w-10 h-10 rounded-2xl bg-[#0284C7]/10 text-[#0284C7] flex items-center justify-center text-base">
+                     <i class="fas fa-notes-medical"></i>
+                  </span>
+                  <div>
+                     <p class="text-xs font-semibold text-slate-500">ملخص التقييم الشهري</p>
+                     <p class="text-xs font-bold text-slate-800 mt-0.5">إحصائيات التغطية الفعلية</p>
+                  </div>
+               </div>
+            </div>
+            <div class="grid grid-cols-3 gap-2.5 text-center">
+               <div class="bg-[#F8FAFC] border border-[#E2E8F0] rounded-xl p-2.5">
+                  <div class="text-[11px] text-slate-500 font-medium">إجمالي التقييمات</div>
+                  <div id="stat-total-inspections" class="tabular-nums text-lg font-bold text-[#0284C7] mt-0.5">0</div>
+               </div>
+               <div class="bg-[#F8FAFC] border border-[#E2E8F0] rounded-xl p-2.5">
+                  <div class="text-[11px] text-slate-500 font-medium">الأقسام</div>
+                  <div id="stat-dept-count" class="tabular-nums text-lg font-bold text-[#0D9488] mt-0.5">0</div>
+               </div>
+               <div class="bg-[#F8FAFC] border border-[#E2E8F0] rounded-xl p-2.5">
+                  <div class="text-[11px] text-slate-500 font-medium">الفئات</div>
+                  <div id="stat-cat-count" class="tabular-nums text-lg font-bold text-slate-800 mt-0.5">0</div>
+               </div>
             </div>
          </div>
       </div>
 
-      <!-- Monthly Charts Area (Side by Side) -->
-      <div class="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-8">
+      <!-- Monthly Charts Bento Area (Side by Side) -->
+      <div class="grid grid-cols-1 lg:grid-cols-2 gap-3 md:gap-4">
          <!-- Monthly Chart (Department) -->
-         <div class="bg-white p-4 rounded-lg shadow-md border border-gray-100">
-            <h3 class="font-bold text-gray-700 mb-4 border-b pb-2">
-               <i class="fas fa-building text-teal-500 ml-2"></i>
-               نسبة الالتزام حسب الأقسام (للشهر المحدد)
-            </h3>
+         <div class="bento-card p-5">
+            <div class="flex items-center justify-between mb-4 pb-3 border-b border-[#E2E8F0]">
+               <div class="flex items-center gap-2.5">
+                  <span class="w-8 h-8 rounded-xl bg-[#0D9488]/10 text-[#0D9488] flex items-center justify-center text-sm">
+                     <i class="fas fa-hospital-alt"></i>
+                  </span>
+                  <h3 class="font-bold text-sm md:text-base text-slate-900">نسبة الالتزام حسب الأقسام (للشهر المحدد)</h3>
+               </div>
+            </div>
             <div class="relative h-64">
                <canvas id="chart-dept"></canvas>
             </div>
          </div>
 
          <!-- Monthly Chart (Category) -->
-         <div class="bg-white p-4 rounded-lg shadow-md border border-gray-100">
-            <h3 class="font-bold text-gray-700 mb-4 border-b pb-2">
-               <i class="fas fa-users text-indigo-500 ml-2"></i>
-               نسبة الالتزام حسب الفئات (للشهر المحدد)
-            </h3>
+         <div class="bento-card p-5">
+            <div class="flex items-center justify-between mb-4 pb-3 border-b border-[#E2E8F0]">
+               <div class="flex items-center gap-2.5">
+                  <span class="w-8 h-8 rounded-xl bg-[#0284C7]/10 text-[#0284C7] flex items-center justify-center text-sm">
+                     <i class="fas fa-user-md"></i>
+                  </span>
+                  <h3 class="font-bold text-sm md:text-base text-slate-900">نسبة الالتزام حسب الفئات (للشهر المحدد)</h3>
+               </div>
+            </div>
             <div class="relative h-64">
                <canvas id="chart-cat"></canvas>
             </div>
          </div>
       </div>
 
-      <!-- Annual Chart (Full Width) -->
-      <div class="bg-white p-4 rounded-lg shadow-md border border-gray-100 mb-8">
-         <h3 class="font-bold text-gray-700 mb-4 border-b pb-2">
-            <i class="fas fa-chart-line text-purple-500 ml-2"></i>
-            التطور السنوي للمؤشر (العام الحالي)
-         </h3>
+      <!-- Annual Chart Bento Card (Full Width) -->
+      <div class="bento-card p-5">
+         <div class="flex items-center justify-between mb-4 pb-3 border-b border-[#E2E8F0]">
+            <div class="flex items-center gap-2.5">
+               <span class="w-8 h-8 rounded-xl bg-[#0284C7]/10 text-[#0284C7] flex items-center justify-center text-sm">
+                  <i class="fas fa-chart-area"></i>
+               </span>
+               <h3 class="font-bold text-sm md:text-base text-slate-900">التطور السنوي للمؤشر (العام الحالي)</h3>
+            </div>
+         </div>
          <div class="relative h-64">
             <canvas id="chart-annual"></canvas>
          </div>
@@ -764,25 +1112,33 @@
 
     <!-- 2. ENTRY FORM -->
     <section id="entry" class="page hidden max-w-5xl mx-auto">
-      <div class="bg-white rounded-lg shadow p-6 border-t-4 border-indigo-600">
-         <h2 class="text-2xl font-bold text-indigo-900 mb-6 border-b pb-2">بيانات الجلسة</h2>
+      <div class="bento-card p-5 md:p-6">
+         <div class="flex items-center gap-3 mb-5 pb-3 border-b border-[#E2E8F0]">
+            <span class="w-10 h-10 rounded-2xl bg-[#0D9488]/10 text-[#0D9488] flex items-center justify-center text-base">
+               <i class="fas fa-clipboard-check"></i>
+            </span>
+            <div>
+               <h2 class="text-lg md:text-xl font-bold text-slate-900">بيانات جلسة التقييم السريري</h2>
+               <p class="text-xs text-slate-500">اختر المؤشر وبيانات الجلسة لبدء المراجعة وتسجيل بنود الامتثال</p>
+            </div>
+         </div>
          
          <!-- Filters -->
-         <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 mb-6">
+         <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3 md:gap-4 mb-5">
             <div>
               <label class="label">التاريخ</label>
-              <input type="date" id="date" class="input">
+              <input type="date" id="date" class="input tabular-nums">
             </div>
             <div>
               <label class="label">القائم بالتقييم</label>
               <select id="inspector" class="input"></select>
             </div>
             <div>
-              <label class="label">القسم <span class="text-xs text-gray-400 font-normal">(اختياري)</span></label>
+              <label class="label">القسم <span class="text-xs text-slate-400 font-normal">(اختياري)</span></label>
               <select id="department" class="input" onchange="checkSession()"></select>
             </div>
             <div>
-              <label class="label">الفئة المستهدفة <span class="text-xs text-gray-400 font-normal">(اختياري)</span></label>
+              <label class="label">الفئة المستهدفة <span class="text-xs text-slate-400 font-normal">(اختياري)</span></label>
               <select id="category" class="input" onchange="checkSession()"></select>
             </div>
             <div>
@@ -798,18 +1154,20 @@
               <input type="text" id="target_job_id" class="input" placeholder="الوظيفة أو الرقم">
             </div>
             
-            <!-- Session Counter Display -->
-            <div class="bg-indigo-50 border border-indigo-200 rounded p-3 flex flex-col justify-center shadow-sm">
-               <div class="flex justify-between items-center text-sm text-indigo-900 font-bold mb-1">
-                 <span><i class="fas fa-bookmark text-indigo-600 ml-1"></i> رقم الجلسة الحالية:</span>
-                 <span id="session-display" class="text-base font-black text-indigo-800 bg-white px-3 py-0.5 rounded border border-indigo-200 shadow-xs">-</span>
+            <!-- Session Counter Bento Sub-card -->
+            <div class="lg:col-span-2 bg-[#F8FAFC] border border-[#E2E8F0] rounded-2xl p-3.5 flex flex-col justify-center">
+               <div class="flex justify-between items-center text-sm text-slate-800 font-bold mb-1">
+                 <span class="flex items-center gap-1.5">
+                   <i class="fas fa-bookmark text-[#0D9488]"></i> رقم الجلسة الحالية:
+                 </span>
+                 <span id="session-display" class="tabular-nums text-sm font-bold text-[#0D9488] bg-white px-3 py-1 rounded-full border border-[#E2E8F0]">-</span>
                </div>
-               <div class="flex justify-between items-center text-xs text-gray-600 mt-1.5 border-t border-indigo-100 pt-1.5 flex-wrap gap-2">
+               <div class="flex justify-between items-center text-xs text-slate-600 mt-2 border-t border-[#E2E8F0] pt-2 flex-wrap gap-2">
                  <div class="flex items-center gap-1.5">
                    <span>عدد الجلسات المحفوظة هذا الشهر:</span>
-                   <span id="session-count-text" class="font-bold text-gray-800">0</span>
+                   <span id="session-count-text" class="tabular-nums font-bold text-slate-900">0</span>
                  </div>
-                 <button type="button" id="btn-multiply-from-entry" onclick="openMultiplyFromEntry()" class="hidden bg-purple-600 hover:bg-purple-700 text-white text-[11px] font-bold px-2.5 py-1 rounded shadow-xs transition flex items-center gap-1 cursor-pointer" title="مضاعفة عدد الجلسات المحفوظة لهذا المؤشر في نفس الشهر">
+                 <button type="button" id="btn-multiply-from-entry" onclick="openMultiplyFromEntry()" class="hidden bg-[#0284C7] hover:bg-[#0369A1] text-white text-[11px] font-bold px-3 py-1.5 rounded-full transition flex items-center gap-1.5 cursor-pointer whitespace-nowrap" title="مضاعفة عدد الجلسات المحفوظة لهذا المؤشر في نفس الشهر">
                    <i class="fas fa-layer-group text-[10px]"></i> مضاعفة الجلسات (×2 أو أكثر)
                  </button>
                </div>
@@ -817,45 +1175,53 @@
          </div>
 
          <!-- Warning -->
-         <div id="limit-msg" class="hidden bg-red-100 text-red-700 p-3 rounded mb-4 font-bold text-center border border-red-200">
-           <i class="fas fa-check-circle"></i> تم اكتمال الحد المطلوب لهذا المؤشر هذا الشهر.
+         <div id="limit-msg" class="hidden bg-[#FEF3C7] text-[#B45309] p-3.5 rounded-xl mb-4 font-semibold text-sm text-center border border-amber-200">
+           <i class="fas fa-check-circle ml-1"></i> تم اكتمال الحد المطلوب لهذا المؤشر هذا الشهر.
          </div>
 
          <!-- Questions -->
          <div id="questions-area" class="hidden">
-            <h3 class="font-bold text-gray-700 mb-3 bg-gray-100 p-2 rounded">بنود التقييم</h3>
-            <div id="q-list" class="space-y-3 mb-6"></div>
+            <div class="flex items-center justify-between bg-[#F8FAFC] border border-[#E2E8F0] px-4 py-2.5 rounded-xl mb-3">
+               <h3 class="font-bold text-sm text-slate-800 flex items-center gap-2">
+                  <i class="fas fa-tasks text-[#0D9488]"></i> بنود التقييم
+               </h3>
+               <span class="text-[11px] text-slate-500">اختر الاستجابة لكل بند ليتم احتساب النسبة تلقائياً</span>
+            </div>
+            <div id="q-list" class="space-y-3 mb-5"></div>
             
-            <!-- Live Score & Average Display Card -->
-            <div class="bg-gradient-to-r from-indigo-50 via-blue-50 to-teal-50 border border-indigo-200 rounded-lg p-4 mb-6 shadow-xs">
-               <div class="grid grid-cols-1 md:grid-cols-2 gap-4 text-center divide-y md:divide-y-0 md:divide-x md:divide-x-reverse divide-indigo-100">
+            <!-- Live Score & Average Bento Card -->
+            <div class="bg-[#F8FAFC] border border-[#E2E8F0] rounded-2xl p-4 mb-5">
+               <div class="grid grid-cols-1 md:grid-cols-2 gap-4 text-center divide-y md:divide-y-0 md:divide-x md:divide-x-reverse divide-[#E2E8F0]">
                   
-                  <!-- 1. Current Session Result (نتيجة الجلسة الحالية) -->
+                  <!-- 1. Current Session Result -->
                   <div class="flex flex-col items-center justify-center p-2">
-                     <span class="text-xs font-bold text-indigo-900 mb-1">نتيجة التقييم الحالية</span>
-                     <div class="flex items-center gap-2">
-                        <span id="live-score" class="text-3xl font-black text-gray-400">0%</span>
-                        <span id="live-status-badge" class="px-2.5 py-0.5 rounded-full text-xs font-bold bg-gray-200 text-gray-700">غير مكتمل</span>
+                     <span class="text-xs font-semibold text-slate-600 mb-1.5">نتيجة التقييم الحالية</span>
+                     <div class="flex items-center gap-2.5">
+                        <span id="live-score" class="tabular-nums text-3xl font-bold text-slate-400">0%</span>
+                        <span id="live-status-badge" class="px-3 py-1 rounded-full text-xs font-semibold bg-[#F1F5F9] text-slate-600">غير مكتمل</span>
                      </div>
-                     <span id="live-items-breakdown" class="text-xs text-gray-500 mt-1">0 من 0 بنود مطابقة</span>
+                     <div class="w-48 h-1.5 bg-[#E2E8F0] rounded-full overflow-hidden mt-2.5">
+                        <div id="entry-live-bar" class="h-full bg-[#0D9488] rounded-full transition-all duration-300" style="width: 0%"></div>
+                     </div>
+                     <span id="live-items-breakdown" class="tabular-nums text-xs text-slate-500 mt-1.5">0 من 0 بنود مطابقة</span>
                   </div>
 
-                  <!-- 2. General Commitment Rate (نسبة الالتزام العامة) -->
-                  <div class="flex flex-col items-center justify-center p-2 pt-3 md:pt-2">
-                     <span class="text-xs font-bold text-indigo-900 mb-1">نسبة الالتزام العامة</span>
-                     <span id="overall-projected-avg" class="text-3xl font-black text-teal-700">0%</span>
-                     <span id="overall-avg-subtitle" class="text-xs text-teal-600 mt-1">تشمل الجلسة الحالية</span>
+                  <!-- 2. General Commitment Rate -->
+                  <div class="flex flex-col items-center justify-center p-2 pt-4 md:pt-2">
+                     <span class="text-xs font-semibold text-slate-600 mb-1.5">نسبة الالتزام العامة</span>
+                     <span id="overall-projected-avg" class="tabular-nums text-3xl font-bold text-[#0284C7]">0%</span>
+                     <span id="overall-avg-subtitle" class="text-xs text-[#0D9488] font-medium mt-1.5">تشمل الجلسة الحالية</span>
                   </div>
 
                </div>
             </div>
 
              <div class="flex flex-col sm:flex-row gap-3">
-                <button onclick="submitForm()" class="flex-1 bg-indigo-600 hover:bg-indigo-700 text-white py-3 px-6 rounded-lg font-bold transition shadow flex items-center justify-center gap-2">
+                <button onclick="submitForm()" class="flex-1 bg-[#0D9488] hover:bg-[#0F766E] text-white py-3 px-6 rounded-xl font-bold text-sm transition shadow-xs flex items-center justify-center gap-2">
                    <i class="fas fa-save"></i> حفظ التقييم
                 </button>
-                <button type="button" onclick="exportCurrentMonthEntryExcel()" class="bg-emerald-600 hover:bg-emerald-700 text-white py-3 px-5 rounded-lg font-bold text-sm transition shadow flex items-center justify-center gap-2" title="حفظ وتصدير نتائج المؤشرات لهذا الشهر في شيت إكسيل">
-                   <i class="fas fa-file-excel text-base"></i> حفظ النتائج كشيت إكسيل
+                <button type="button" onclick="exportCurrentMonthEntryExcel()" class="bg-[#F1F5F9] hover:bg-slate-200 text-slate-800 border border-[#E2E8F0] py-3 px-5 rounded-xl font-bold text-sm transition flex items-center justify-center gap-2 whitespace-nowrap" title="حفظ وتصدير نتائج المؤشرات لهذا الشهر في شيت إكسيل">
+                   <i class="fas fa-file-excel text-[#10B981] text-base"></i> حفظ النتائج كشيت إكسيل
                 </button>
              </div>
          </div>
@@ -864,31 +1230,33 @@
     </section>
 
     <!-- 3. REPORT -->
-    <section id="report" class="page hidden max-w-6xl mx-auto space-y-6">
+    <section id="report" class="page hidden max-w-7xl mx-auto space-y-4">
        
        <!-- 1. Controls & Filters (no-print) -->
-       <div class="no-print bg-white p-5 rounded-lg shadow-sm border border-gray-200">
-          <div class="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 mb-4 border-b pb-4">
-             <div>
-                <h2 class="text-xl font-black text-indigo-950 flex items-center gap-2">
-                   <i class="fas fa-file-invoice text-indigo-600"></i>
-                   تقارير مؤشرات الأداء
-                </h2>
-                <p class="text-xs text-gray-500 mt-1">عرض، تعديل، طباعة فردية، أو تحديد جماعي لطباعة تقارير المؤشرات</p>
+       <div class="no-print bento-card p-5">
+          <div class="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 mb-4 border-b border-[#E2E8F0] pb-4">
+             <div class="flex items-center gap-3">
+                <span class="w-10 h-10 rounded-2xl bg-[#0D9488]/10 text-[#0D9488] flex items-center justify-center text-base">
+                   <i class="fas fa-file-invoice"></i>
+                </span>
+                <div>
+                   <h2 class="text-lg md:text-xl font-bold text-slate-900">تقارير مؤشرات الأداء</h2>
+                   <p class="text-xs text-slate-500 mt-0.5">عرض، تعديل، طباعة فردية، أو تحديد جماعي لطباعة تقارير المؤشرات</p>
+                </div>
              </div>
              <div class="flex items-center gap-2 flex-wrap">
-                <label class="flex items-center gap-2 cursor-pointer bg-slate-50 hover:bg-slate-100 border border-slate-300 px-3 py-2 rounded-lg text-xs font-bold text-slate-800 transition shadow-2xs select-none" title="تحديد إضافة أو استبعاد نسبة الالتزام العام للمؤشر عند الطباعة">
-                   <input type="checkbox" id="toggle-overall-pct-filters" checked class="w-4 h-4 accent-indigo-600 rounded cursor-pointer" onchange="toggleOverallPctInPrint(this.checked)">
-                   <i class="fas fa-percent text-indigo-600 text-xs"></i>
+                <label class="flex items-center gap-2 cursor-pointer bg-[#F8FAFC] hover:bg-[#F1F5F9] border border-[#E2E8F0] px-3 py-2 rounded-xl text-xs font-semibold text-slate-700 transition select-none" title="تحديد إضافة أو استبعاد نسبة الالتزام العام للمؤشر عند الطباعة">
+                   <input type="checkbox" id="toggle-overall-pct-filters" checked class="w-4 h-4 accent-[#0D9488] rounded cursor-pointer" onchange="toggleOverallPctInPrint(this.checked)">
+                   <i class="fas fa-percent text-[#0D9488] text-xs"></i>
                    <span>إدراج نسبة الالتزام العام عند الطباعة</span>
                 </label>
-                <button id="btn-export-excel" onclick="exportReportsToExcel()" class="bg-emerald-600 hover:bg-emerald-700 text-white px-4 py-2 rounded-lg font-bold text-sm transition shadow flex items-center gap-2" title="تصدير التقارير المحددة أو كافة التقارير المعروضة إلى شيت إكسيل">
-                   <i class="fas fa-file-excel text-base"></i>
-                   <span>حفظ كشيت إكسيل (<span id="excel-export-count">الكل</span>)</span>
+                <button id="btn-export-excel" onclick="exportReportsToExcel()" class="bg-[#F1F5F9] hover:bg-slate-200 text-slate-800 border border-[#E2E8F0] px-4 py-2 rounded-xl font-semibold text-xs md:text-sm transition flex items-center gap-2 whitespace-nowrap" title="تصدير التقارير المحددة أو كافة التقارير المعروضة إلى شيت إكسيل">
+                   <i class="fas fa-file-excel text-[#10B981] text-base"></i>
+                   <span>حفظ كشيت إكسيل (<span id="excel-export-count" class="tabular-nums">الكل</span>)</span>
                 </button>
-                <button id="btn-print-selected" onclick="printSelectedReports()" class="bg-indigo-600 hover:bg-indigo-700 text-white px-4 py-2 rounded-lg font-bold text-sm transition shadow flex items-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed" disabled>
+                <button id="btn-print-selected" onclick="printSelectedReports()" class="bg-[#0D9488] hover:bg-[#0F766E] text-white px-4 py-2 rounded-xl font-semibold text-xs md:text-sm transition flex items-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed whitespace-nowrap" disabled>
                    <i class="fas fa-print"></i>
-                   طباعة التقارير المحددة (<span id="selected-reports-count">0</span>)
+                   <span>طباعة التقارير المحددة (<span id="selected-reports-count" class="tabular-nums">0</span>)</span>
                 </button>
              </div>
           </div>
@@ -896,25 +1264,26 @@
           <div class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-3 items-end">
              <div>
                 <label class="label text-xs">تصفية بشهر محدد (اختياري)</label>
-                <input type="month" id="rep-month" class="input text-sm" placeholder="جميع الشهور" onchange="loadReportsList()">
+                <input type="month" id="rep-month" class="input text-sm tabular-nums" placeholder="جميع الشهور" onchange="loadReportsList()">
              </div>
              <div>
                 <label class="label text-xs">بحث باسم المؤشر أو الشهر</label>
                 <div class="relative">
-                   <input type="text" id="rep-search" class="input text-sm pl-8" placeholder="اكتب اسم المؤشر أو الشهر..." oninput="filterReportsTable()">
-                   <i class="fas fa-search absolute left-2.5 top-3 text-gray-400 text-xs"></i>
+                   <input type="text" id="rep-search" class="pill-search w-full py-2 pr-9 pl-4 text-sm text-slate-800 placeholder-slate-400" placeholder="اكتب اسم المؤشر أو الشهر..." oninput="filterReportsTable()">
+                   <i class="fas fa-search absolute right-3 top-2.5 text-slate-400 text-xs pointer-events-none"></i>
                 </div>
              </div>
              <div class="flex gap-2">
-                <button onclick="loadReportsList(undefined, true)" class="flex-1 bg-indigo-600 text-white py-2 rounded-md font-bold text-xs hover:bg-indigo-700 h-[40px] transition" title="تحديث البيانات فوراً">
-                   <i class="fas fa-sync-alt ml-1"></i> تحديث
+                <button onclick="loadReportsList(undefined, true)" class="action-icon-btn flex-1 bg-[#0D9488] text-white py-2 rounded-xl font-semibold text-xs hover:bg-[#0F766E] h-[40px] transition flex items-center justify-center gap-1.5 whitespace-nowrap" title="تحديث البيانات فوراً">
+                   <span class="action-icon"><i class="fas fa-sync-alt"></i></span>
+                   <span>تحديث</span>
                 </button>
-                <button onclick="showAllMonthsReports()" class="flex-1 bg-emerald-50 text-emerald-800 border border-emerald-300 py-2 rounded-md font-bold text-xs hover:bg-emerald-100 h-[40px] transition" title="عرض كافة التقارير لجميع الشهور المسجلة">
+                <button onclick="showAllMonthsReports()" class="flex-1 bg-[#DCFCE7]/70 text-[#047857] border border-emerald-200 py-2 rounded-xl font-semibold text-xs hover:bg-[#DCFCE7] h-[40px] transition whitespace-nowrap" title="عرض كافة التقارير لجميع الشهور المسجلة">
                    <i class="fas fa-calendar-alt ml-1"></i> جميع الشهور
                 </button>
              </div>
              <div class="text-left flex items-center justify-end h-[40px]">
-                <button type="button" onclick="toggleSelectAllReports()" class="text-xs font-semibold text-indigo-700 hover:text-indigo-900 bg-indigo-50 border border-indigo-200 px-3 py-2 rounded-md transition">
+                <button type="button" onclick="toggleSelectAllReports()" class="text-xs font-semibold text-[#0284C7] hover:bg-[#0284C7]/10 bg-[#F8FAFC] border border-[#E2E8F0] px-3.5 py-2 rounded-xl transition whitespace-nowrap">
                    <i class="fas fa-check-double ml-1"></i> تحديد / إلغاء الكل
                 </button>
              </div>
@@ -922,58 +1291,58 @@
        </div>
 
        <!-- 2. Reports Table (no-print) -->
-       <div class="no-print bg-white rounded-lg shadow-sm border border-gray-200 overflow-hidden">
-          <div class="p-3 bg-slate-50 border-b flex justify-between items-center">
-             <span class="text-xs font-bold text-gray-700">قائمة تقارير المؤشرات</span>
-             <span id="reports-table-count" class="text-xs text-gray-500 font-medium">جاري التحميل...</span>
+       <div class="no-print bento-card overflow-hidden">
+          <div class="px-4 py-3 bg-[#F8FAFC] border-b border-[#E2E8F0] flex justify-between items-center">
+             <span class="text-xs font-bold text-slate-800">قائمة تقارير المؤشرات</span>
+             <span id="reports-table-count" class="tabular-nums text-xs text-slate-500 font-semibold">جاري التحميل...</span>
           </div>
           <div class="overflow-x-auto">
              <table class="w-full text-sm text-right border-collapse">
-                <thead class="bg-slate-100 text-slate-700 text-xs font-bold border-b border-gray-200">
+                <thead class="bg-[#F8FAFC] text-slate-600 text-xs font-bold border-b border-[#E2E8F0]">
                    <tr>
-                      <th class="p-3 border-l text-center w-12">
-                         <input type="checkbox" id="select-all-checkbox" onchange="toggleSelectAllReports(this.checked)" class="w-4 h-4 accent-indigo-600 cursor-pointer" title="تحديد / إلغاء تحديد الكل">
+                      <th class="p-3 border-l border-[#E2E8F0] text-center w-12">
+                         <input type="checkbox" id="select-all-checkbox" onchange="toggleSelectAllReports(this.checked)" class="w-4 h-4 accent-[#0D9488] cursor-pointer" title="تحديد / إلغاء تحديد الكل">
                       </th>
-                      <th class="p-3 border-l w-28">الشهر</th>
-                      <th class="p-3 border-l">المؤشر</th>
-                      <th class="p-3 border-l text-center w-36">النسبة (الامتثال)</th>
-                      <th class="p-3 border-l text-center w-28">التقييمات</th>
+                      <th class="p-3 border-l border-[#E2E8F0] w-28">الشهر</th>
+                      <th class="p-3 border-l border-[#E2E8F0]">المؤشر</th>
+                      <th class="p-3 border-l border-[#E2E8F0] text-center w-36">النسبة (الامتثال)</th>
+                      <th class="p-3 border-l border-[#E2E8F0] text-center w-28">التقييمات</th>
                       <th class="p-3 text-center w-72">الإجراءات</th>
                    </tr>
                 </thead>
-                <tbody id="reports-table-body" class="divide-y divide-gray-100">
+                <tbody id="reports-table-body" class="divide-y divide-[#E2E8F0]">
                    <!-- Rows loaded via JavaScript -->
                 </tbody>
              </table>
           </div>
        </div>
 
-       <!-- 3. Printable Report Content Area (#rep-content) -->
-       <div id="rep-content" class="bg-white p-8 rounded shadow min-h-[400px] hidden">
+       <!-- 3. Printable Report Content Area (#rep-content) - Print Layout Preserved -->
+       <div id="rep-content" class="bento-card p-6 md:p-8 min-h-[400px] hidden print:p-0 print:border-none print:shadow-none print:rounded-none">
           <!-- Toolbar in Preview Mode (no-print) -->
-          <div class="no-print flex flex-wrap justify-between items-center gap-3 bg-indigo-50 border border-indigo-200 p-3 rounded-lg mb-6">
+          <div class="no-print flex flex-wrap justify-between items-center gap-3 bg-[#F8FAFC] border border-[#E2E8F0] p-3.5 rounded-2xl mb-6">
              <div class="flex items-center gap-3 flex-wrap">
-                <div class="flex items-center gap-2 text-indigo-900 font-bold text-sm">
-                   <i class="fas fa-eye text-indigo-600"></i>
+                <div class="flex items-center gap-2 text-slate-900 font-bold text-sm">
+                   <i class="fas fa-eye text-[#0D9488]"></i>
                    <span id="rep-preview-label">معاينة التقرير المجهز للطباعة</span>
                 </div>
-                <label class="flex items-center gap-2 cursor-pointer bg-white hover:bg-indigo-50 border border-indigo-300 px-3 py-1.5 rounded-md text-xs font-bold text-indigo-950 transition shadow-2xs select-none" title="إظهار أو استبعاد نسبة الالتزام العام للمؤشر في التقرير والطباعة">
-                   <input type="checkbox" id="toggle-overall-pct-preview" checked class="w-4 h-4 accent-indigo-600 rounded cursor-pointer" onchange="toggleOverallPctInPrint(this.checked)">
-                   <i class="fas fa-percent text-indigo-600 text-xs"></i>
+                <label class="flex items-center gap-2 cursor-pointer bg-white hover:bg-[#F8FAFC] border border-[#E2E8F0] px-3 py-1.5 rounded-xl text-xs font-semibold text-slate-700 transition select-none" title="إظهار أو استبعاد نسبة الالتزام العام للمؤشر في التقرير والطباعة">
+                   <input type="checkbox" id="toggle-overall-pct-preview" checked class="w-4 h-4 accent-[#0D9488] rounded cursor-pointer" onchange="toggleOverallPctInPrint(this.checked)">
+                   <i class="fas fa-percent text-[#0D9488] text-xs"></i>
                    <span>إدراج نسبة الالتزام العام للمؤشر</span>
                 </label>
              </div>
              <div class="flex items-center gap-2 flex-wrap">
-                <button type="button" onclick="openMultiplyFromPreview()" class="bg-purple-600 hover:bg-purple-700 text-white px-3.5 py-1.5 rounded-md font-bold text-xs shadow transition flex items-center gap-1.5" title="مضاعفة جلسات هذا المؤشر في نفس الشهر">
+                <button type="button" onclick="openMultiplyFromPreview()" class="bg-[#0284C7] hover:bg-[#0369A1] text-white px-3.5 py-1.5 rounded-xl font-semibold text-xs transition flex items-center gap-1.5" title="مضاعفة جلسات هذا المؤشر في نفس الشهر">
                    <i class="fas fa-layer-group text-[11px]"></i> مضاعفة الجلسات
                 </button>
-                <button onclick="exportCurrentPreviewToExcel()" class="bg-emerald-600 hover:bg-emerald-700 text-white px-3.5 py-1.5 rounded-md font-bold text-xs shadow transition flex items-center gap-1.5" title="حفظ هذا التقرير في شيت إكسيل">
+                <button onclick="exportCurrentPreviewToExcel()" class="bg-[#DCFCE7] hover:bg-emerald-200 text-[#047857] px-3.5 py-1.5 rounded-xl font-semibold text-xs transition flex items-center gap-1.5" title="حفظ هذا التقرير في شيت إكسيل">
                    <i class="fas fa-file-excel"></i> حفظ في شيت إكسيل
                 </button>
-                <button onclick="window.print()" class="bg-gray-900 hover:bg-black text-white px-4 py-1.5 rounded-md font-bold text-xs shadow transition flex items-center gap-1.5">
+                <button onclick="window.print()" class="bg-slate-900 hover:bg-black text-white px-4 py-1.5 rounded-xl font-semibold text-xs transition flex items-center gap-1.5">
                    <i class="fas fa-print"></i> طباعة الآن
                 </button>
-                <button onclick="hideReportPreview()" class="bg-white hover:bg-gray-100 text-gray-700 border border-gray-300 px-3 py-1.5 rounded-md font-semibold text-xs transition">
+                <button onclick="hideReportPreview()" class="bg-white hover:bg-[#F1F5F9] text-slate-700 border border-[#E2E8F0] px-3 py-1.5 rounded-xl font-semibold text-xs transition">
                    <i class="fas fa-arrow-up ml-1"></i> إغلاق المعاينة والعودة للجدول
                 </button>
              </div>
@@ -983,7 +1352,7 @@
           <div id="rep-tables" class="space-y-6"></div>
           
           <div class="mt-8 text-center no-print action-print hidden">
-            <button onclick="window.print()" class="bg-gray-800 text-white px-6 py-2 rounded hover:bg-gray-700"><i class="fas fa-print ml-2"></i> طباعة</button>
+            <button onclick="window.print()" class="bg-slate-900 text-white px-6 py-2.5 rounded-xl hover:bg-black font-semibold text-sm"><i class="fas fa-print ml-2"></i> طباعة</button>
           </div>
        </div>
     </section>
@@ -991,35 +1360,41 @@
     <!-- 4. SETTINGS -->
     <section id="settings" class="page hidden max-w-6xl mx-auto">
        <!-- User View-Only Notice Banner -->
-       <div id="settings-user-notice" class="hidden mb-4 bg-amber-50 border-r-4 border-amber-500 p-3.5 rounded-lg text-amber-950 text-xs font-bold flex flex-col sm:flex-row sm:items-center justify-between gap-2 shadow-2xs">
+       <div id="settings-user-notice" class="hidden mb-4 bg-[#FEF3C7] border border-amber-200 p-3.5 rounded-2xl text-amber-950 text-xs font-semibold flex flex-col sm:flex-row sm:items-center justify-between gap-2">
           <div class="flex items-center gap-2">
-             <i class="fas fa-lock text-amber-600 text-base"></i>
+             <i class="fas fa-lock text-[#F59E0B] text-base"></i>
              <span>وضع العرض فقط: تم تفعيل حساب المستخدم (User) للاطلاع على الإعدادات والمؤشرات بدون صلاحيات الإضافة أو الحذف أو التعديل أو النسخ.</span>
           </div>
-          <span class="bg-amber-200/80 text-amber-950 px-2.5 py-1 rounded-full text-[11px] font-black self-start sm:self-auto whitespace-nowrap">للقراءة فقط</span>
+          <span class="bg-white/80 text-[#B45309] px-3 py-1 rounded-full text-[11px] font-bold self-start sm:self-auto whitespace-nowrap">للقراءة فقط</span>
        </div>
 
-       <div class="flex justify-between items-center mb-6">
+       <div class="flex justify-between items-center mb-4">
          <div class="flex items-center gap-3">
-           <h2 class="text-2xl font-bold text-gray-800">الإعدادات العامة</h2>
-           <span id="settings-view-badge" class="hidden text-xs bg-amber-100 text-amber-800 border border-amber-200 px-2.5 py-1 rounded-full font-bold">
+           <h2 class="text-xl md:text-2xl font-bold text-slate-900">الإعدادات العامة</h2>
+           <span id="settings-view-badge" class="hidden text-xs bg-[#FEF3C7] text-[#B45309] px-3 py-1 rounded-full font-semibold">
              <i class="fas fa-eye ml-1"></i> وضع العرض فقط
            </span>
          </div>
-         <button id="btn-save-settings" onclick="saveConfig()" class="bg-green-600 text-white px-6 py-2 rounded font-bold hover:bg-green-700">حفظ الكل</button>
+         <button id="btn-save-settings" onclick="saveConfig()" class="bg-[#0D9488] text-white px-6 py-2.5 rounded-xl font-bold text-sm hover:bg-[#0F766E] transition shadow-xs">حفظ الكل</button>
        </div>
 
-       <div class="space-y-6">
-          <div class="bg-white p-4 rounded shadow border border-gray-200">
-             <h3 class="font-bold text-indigo-900 mb-4">بيانات المنشأة</h3>
+       <div class="space-y-4">
+          <div class="bento-card p-5">
+             <h3 class="font-bold text-slate-900 mb-3 flex items-center gap-2">
+                <span class="w-7 h-7 rounded-lg bg-[#0D9488]/10 text-[#0D9488] flex items-center justify-center text-xs"><i class="fas fa-hospital"></i></span>
+                بيانات المنشأة
+             </h3>
              <div>
                 <label class="label">إسم المنشأة (يظهر في التقارير والهيدر)</label>
                 <input type="text" id="set-hospital-name" class="input">
              </div>
           </div>
 
-          <div id="settings-passwords-card" class="bg-white p-4 rounded shadow border border-gray-200">
-             <h3 class="font-bold text-indigo-900 mb-4">كلمات المرور</h3>
+          <div id="settings-passwords-card" class="bento-card p-5">
+             <h3 class="font-bold text-slate-900 mb-3 flex items-center gap-2">
+                <span class="w-7 h-7 rounded-lg bg-[#0284C7]/10 text-[#0284C7] flex items-center justify-center text-xs"><i class="fas fa-key"></i></span>
+                كلمات المرور
+             </h3>
              <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
                 <div>
                    <label class="label">كلمة مرور Admin</label>
@@ -1036,99 +1411,108 @@
              </div>
           </div>
 
-          <div class="bg-white p-4 rounded shadow border border-gray-200">
-             <h3 class="font-bold text-indigo-900 mb-2">القائمين بالتقييم</h3>
-             <textarea id="set-insp" class="input h-24" placeholder="كل اسم في سطر"></textarea>
+          <div class="bento-card p-5">
+             <h3 class="font-bold text-slate-900 mb-2 flex items-center gap-2">
+                <span class="w-7 h-7 rounded-lg bg-[#0D9488]/10 text-[#0D9488] flex items-center justify-center text-xs"><i class="fas fa-user-check"></i></span>
+                القائمين بالتقييم
+             </h3>
+             <textarea id="set-insp" class="input h-24" data-extra="h-24" placeholder="كل اسم في سطر"></textarea>
           </div>
           
-          <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
-             <div class="bg-white p-4 rounded shadow border border-gray-200">
-                <h3 class="font-bold text-indigo-900 mb-2">الأقسام</h3>
-                <textarea id="set-dept" class="input h-32"></textarea>
+          <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+             <div class="bento-card p-5">
+                <h3 class="font-bold text-slate-900 mb-2 flex items-center gap-2">
+                   <span class="w-7 h-7 rounded-lg bg-[#0D9488]/10 text-[#0D9488] flex items-center justify-center text-xs"><i class="fas fa-building"></i></span>
+                   الأقسام
+                </h3>
+                <textarea id="set-dept" class="input h-32" data-extra="h-32"></textarea>
              </div>
-             <div class="bg-white p-4 rounded shadow border border-gray-200">
-                <h3 class="font-bold text-indigo-900 mb-2">الفئات</h3>
-                <textarea id="set-cat" class="input h-32"></textarea>
+             <div class="bento-card p-5">
+                <h3 class="font-bold text-slate-900 mb-2 flex items-center gap-2">
+                   <span class="w-7 h-7 rounded-lg bg-[#0284C7]/10 text-[#0284C7] flex items-center justify-center text-xs"><i class="fas fa-users"></i></span>
+                   الفئات
+                </h3>
+                <textarea id="set-cat" class="input h-32" data-extra="h-32"></textarea>
              </div>
           </div>
 
-          <div class="hidden bg-white p-4 rounded shadow border border-gray-200">
-             <h3 class="font-bold text-indigo-900 mb-4">أهداف الجلسات</h3>
+          <div class="hidden bento-card p-5">
+             <h3 class="font-bold text-slate-900 mb-4">أهداف الجلسات</h3>
              <div id="set-targets-list" class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4">
                 <!-- Dynamically populated targets list -->
              </div>
           </div>
 
-          <div class="bg-white p-4 rounded shadow border border-gray-200">
-             <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-2 mb-4 pb-3 border-b border-gray-100">
+          <div class="bento-card p-5">
+             <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3 mb-4 pb-3 border-b border-[#E2E8F0]">
                 <div>
-                   <h3 class="font-bold text-indigo-900 text-lg">المؤشرات والأسئلة</h3>
-                   <p class="text-xs text-gray-500 mt-0.5">إدارة مؤشرات الأداء، الإجراءات، وتعديل أسماء المؤشرات والأسئلة</p>
+                   <h3 class="font-bold text-slate-900 text-base md:text-lg">المؤشرات والأسئلة</h3>
+                   <p class="text-xs text-slate-500 mt-0.5">إدارة مؤشرات الأداء، الإجراءات، وتعديل أسماء المؤشرات والأسئلة</p>
                 </div>
                 <div id="settings-kpi-top-actions" class="flex items-center gap-2 flex-wrap">
-                   <button type="button" onclick="openAddProcedureModal()" class="text-xs bg-emerald-50 hover:bg-emerald-100 text-emerald-900 border border-emerald-300 px-3.5 py-1.5 rounded-lg font-bold transition flex items-center gap-1.5 shadow-2xs" title="إضافة إجراء جديد وربطه بالمؤشر والتقارير">
-                      <i class="fas fa-plus-circle text-emerald-600"></i> إضافة إجراء جديد
+                   <button type="button" onclick="openAddProcedureModal()" class="text-xs bg-[#DCFCE7]/80 hover:bg-[#DCFCE7] text-[#047857] px-3.5 py-2 rounded-xl font-bold transition flex items-center gap-1.5" title="إضافة إجراء جديد وربطه بالمؤشر والتقارير">
+                      <i class="fas fa-plus-circle text-[#10B981]"></i> إضافة إجراء جديد
                    </button>
-                   <button type="button" onclick="openRenameIndicatorModal()" class="text-xs bg-amber-50 hover:bg-amber-100 text-amber-900 border border-amber-300 px-3.5 py-1.5 rounded-lg font-bold transition flex items-center gap-1.5 shadow-2xs">
-                      <i class="fas fa-edit text-amber-600"></i> تعديل اسم مؤشر
+                   <button type="button" onclick="openRenameIndicatorModal()" class="text-xs bg-[#FEF3C7]/80 hover:bg-[#FEF3C7] text-[#B45309] px-3.5 py-2 rounded-xl font-bold transition flex items-center gap-1.5">
+                      <i class="fas fa-edit text-[#F59E0B]"></i> تعديل اسم مؤشر
                    </button>
                 </div>
              </div>
              
-             <!-- Manual Entry -->
-             <div id="settings-manual-entry-card" class="mb-6 bg-gray-50 p-3.5 rounded-lg border border-gray-200">
-                <h4 class="text-sm font-bold text-gray-700 mb-2.5 flex items-center gap-1.5">
-                   <i class="fas fa-plus-circle text-indigo-600"></i> 1. إضافة يدوية (المؤشر / الإجراء / السؤال)
+             <!-- Manual Entry (3-column: المؤشر / الإجراء / السؤال) -->
+             <div id="settings-manual-entry-card" class="mb-5 bg-[#F8FAFC] p-4 rounded-2xl border border-[#E2E8F0]">
+                <h4 class="text-sm font-bold text-slate-800 mb-3 flex items-center gap-1.5">
+                   <i class="fas fa-plus-circle text-[#0D9488]"></i> 1. إضافة يدوية (المؤشر / الإجراء / السؤال)
                 </h4>
-                <div class="grid grid-cols-1 sm:grid-cols-3 gap-2.5 mb-2.5">
+                <div class="grid grid-cols-1 sm:grid-cols-3 gap-3 mb-3">
                    <div>
-                      <label class="block text-[11px] font-bold text-gray-600 mb-1">اسم المؤشر:</label>
+                      <label class="block text-[11px] font-bold text-slate-600 mb-1">اسم المؤشر:</label>
                       <input type="text" id="new-ind-name" list="existing-indicators-list" placeholder="مثال: نظافة الأيدي" class="input text-sm w-full">
                       <datalist id="existing-indicators-list"></datalist>
                    </div>
                    <div>
-                      <label class="block text-[11px] font-bold text-gray-600 mb-1">الإجراء:</label>
+                      <label class="block text-[11px] font-bold text-slate-600 mb-1">الإجراء:</label>
                       <input type="text" id="new-ind-proc" list="existing-procedures-list" placeholder="مثال: غسل الأيدي وتطهيرها" class="input text-sm w-full">
                       <datalist id="existing-procedures-list"></datalist>
                    </div>
                    <div>
-                      <label class="block text-[11px] font-bold text-gray-600 mb-1">السؤال:</label>
+                      <label class="block text-[11px] font-bold text-slate-600 mb-1">السؤال:</label>
                       <input type="text" id="new-ind-q" placeholder="مثال: هل قام بغسل الأيدي (اللحظة 1)؟" class="input text-sm w-full">
                    </div>
                 </div>
-                <button onclick="addManualKPI()" class="bg-indigo-600 text-white px-5 py-2 rounded-lg text-sm font-bold hover:bg-indigo-700 w-full md:w-auto transition shadow-sm">
+                <button onclick="addManualKPI()" class="bg-[#0D9488] text-white px-5 py-2 rounded-xl text-sm font-bold hover:bg-[#0F766E] w-full md:w-auto transition">
                    <i class="fas fa-plus ml-1"></i> إضافة السؤال للإجراء والمؤشر
                 </button>
              </div>
 
              <!-- Excel Import -->
              <div id="settings-excel-import-card" class="mb-4">
-                <div class="flex flex-col sm:flex-row justify-between items-start sm:items-end gap-1 mb-1.5">
-                   <h4 class="text-sm font-bold text-gray-700 flex items-center gap-1.5">
-                      <i class="fas fa-file-excel text-green-600"></i> 2. استيراد من إكسيل (نسخ ولصق)
+                <div class="flex flex-col sm:flex-row justify-between items-start sm:items-end gap-1 mb-2">
+                   <h4 class="text-sm font-bold text-slate-800 flex items-center gap-1.5">
+                      <i class="fas fa-file-excel text-[#10B981]"></i> 2. استيراد من إكسيل (نسخ ولصق)
                    </h4>
-                   <span class="text-[11px] text-indigo-900 bg-indigo-50 px-2.5 py-1 rounded border border-indigo-200 font-medium">
+                   <span class="text-[11px] text-[#0284C7] bg-[#0284C7]/10 px-3 py-1 rounded-full font-semibold">
                       الترتيب في إكسيل: العمود 1 (المؤشر) | العمود 2 (الإجراء) | العمود 3 (السؤال)
                    </span>
                 </div>
                 <div class="flex gap-2 items-start">
-                   <textarea id="bulk-kpi" class="input h-16 text-xs font-mono" placeholder="الصق البيانات هنا من الإكسيل مباشرة (المؤشر | الإجراء | السؤال)..."></textarea>
-                   <button onclick="importKPIs()" class="bg-teal-600 hover:bg-teal-700 text-white px-4 py-2 rounded-lg font-bold text-sm h-16 whitespace-nowrap transition shadow-sm">
-                      <i class="fas fa-file-import block text-lg mb-1"></i> استيراد
+                   <textarea id="bulk-kpi" class="input h-16 text-xs font-mono" data-extra="h-16 text-xs font-mono" placeholder="الصق البيانات هنا من الإكسيل مباشرة (المؤشر | الإجراء | السؤال)..."></textarea>
+                   <button onclick="importKPIs()" class="bg-[#0D9488] hover:bg-[#0F766E] text-white px-4 py-2 rounded-xl font-bold text-sm h-16 whitespace-nowrap transition">
+                      <i class="fas fa-file-import block text-lg mb-0.5"></i> استيراد
                    </button>
                 </div>
              </div>
 
-             <div class="overflow-x-auto border border-gray-200 rounded-lg max-h-96 overflow-y-auto shadow-xs">
+             <div class="overflow-x-auto border border-[#E2E8F0] rounded-xl max-h-96 overflow-y-auto">
                 <table class="w-full text-xs text-right relative">
-                   <thead class="bg-gray-100 sticky top-0 shadow-xs z-10 text-gray-700">
+                   <thead class="bg-[#F8FAFC] sticky top-0 z-10 text-slate-700 border-b border-[#E2E8F0]">
                       <tr>
-                         <th class="p-2.5 border">المؤشر</th>
-                         <th class="p-2.5 border text-indigo-900 bg-indigo-50/70">الإجراء</th>
-                         <th class="p-2.5 border">السؤال</th>
-                         <th class="p-2.5 border text-center">الفئات المختصة</th>
-                         <th class="p-2.5 border text-center">الأقسام المختصة</th>
-                         <th id="th-kpi-del" class="p-2.5 border w-12 text-center">حذف</th>
+                         <th class="p-2.5 border-l border-[#E2E8F0]">المؤشر</th>
+                         <th class="p-2.5 border-l border-[#E2E8F0] text-[#0D9488] bg-[#0D9488]/5">الإجراء</th>
+                         <th class="p-2.5 border-l border-[#E2E8F0]">السؤال</th>
+                         <th class="p-2.5 border-l border-[#E2E8F0] text-center">الفئات المختصة</th>
+                         <th class="p-2.5 border-l border-[#E2E8F0] text-center">الأقسام المختصة</th>
+                         <th id="th-kpi-del" class="p-2.5 w-12 text-center">حذف</th>
                       </tr>
                    </thead>
                    <tbody id="kpi-set-list"></tbody>
@@ -1139,18 +1523,26 @@
     </section>
 
     <!-- 5. INDIVIDUAL ASSESSMENTS -->
-    <section id="individuals" class="page hidden max-w-6xl mx-auto">
-       <div class="bg-white rounded-lg shadow p-6 border-t-4 border-indigo-600">
-          <div class="flex justify-between items-center mb-6 border-b pb-2">
-             <h2 class="text-2xl font-bold text-indigo-900">التقييمات الفردية</h2>
-             <button onclick="window.print()" class="bg-gray-800 text-white px-4 py-1 rounded hover:bg-gray-700 no-print text-sm"><i class="fas fa-print ml-2"></i> طباعة</button>
+    <section id="individuals" class="page hidden max-w-7xl mx-auto">
+       <div class="bento-card p-5 md:p-6 print:border-none print:shadow-none print:p-0 print:rounded-none">
+          <div class="flex justify-between items-center mb-5 pb-3 border-b border-[#E2E8F0] no-print">
+             <div class="flex items-center gap-3">
+                <span class="w-10 h-10 rounded-2xl bg-[#0284C7]/10 text-[#0284C7] flex items-center justify-center text-base">
+                   <i class="fas fa-user-nurse"></i>
+                </span>
+                <div>
+                   <h2 class="text-lg md:text-xl font-bold text-slate-900">التقييمات الفردية</h2>
+                   <p class="text-xs text-slate-500">متابعة كفاءة الممارسين الصحيين والتوصيات التدريبية</p>
+                </div>
+             </div>
+             <button onclick="window.print()" class="bg-slate-900 text-white px-4 py-2 rounded-xl hover:bg-black no-print text-xs font-semibold flex items-center gap-1.5 transition"><i class="fas fa-print"></i> طباعة</button>
           </div>
           
           <!-- Filters -->
-          <div class="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6 no-print">
+          <div class="grid grid-cols-1 md:grid-cols-4 gap-3 md:gap-4 mb-5 no-print">
              <div>
                 <label class="label">الشهر</label>
-                <input type="month" id="indiv-month" class="input" onchange="filterIndividuals()">
+                <input type="month" id="indiv-month" class="input tabular-nums" onchange="filterIndividuals()">
              </div>
              <div>
                 <label class="label">المؤشر</label>
@@ -1160,14 +1552,17 @@
              </div>
              <div class="md:col-span-2">
                 <label class="label">بحث بالاسم / الوظيفة</label>
-                <input type="text" id="indiv-search" class="input" placeholder="اكتب الاسم أو الوظيفة للبحث..." onkeyup="filterIndividuals()">
+                <div class="relative">
+                   <input type="text" id="indiv-search" class="pill-search w-full py-2 pr-9 pl-4 text-sm text-slate-800 placeholder-slate-400" placeholder="اكتب الاسم أو الوظيفة للبحث..." onkeyup="filterIndividuals()">
+                   <i class="fas fa-search absolute right-3 top-2.5 text-slate-400 text-xs pointer-events-none"></i>
+                </div>
              </div>
           </div>
           
-          <div class="overflow-x-auto">
-             <table class="w-full text-sm text-right border text-gray-700 relative">
-                <thead class="bg-gray-100 border-b shadow-sm table-header-group">
-                   <!-- Print Header -->
+          <div class="overflow-x-auto rounded-xl border border-[#E2E8F0] print:border-none print:rounded-none">
+             <table class="w-full text-sm text-right border-collapse text-slate-700 relative">
+                <thead class="bg-[#F8FAFC] border-b border-[#E2E8F0] table-header-group">
+                   <!-- Print Header (Preserved for print) -->
                    <tr class="hidden print-table-row">
                       <td colspan="7" class="bg-white">
                         <div class="border-b-2 border-gray-800 pb-4 mb-6 text-center print-header">
@@ -1177,14 +1572,14 @@
                         </div>
                       </td>
                    </tr>
-                   <tr>
-                      <th class="p-3 border">التاريخ</th>
-                      <th class="p-3 border">الاسم</th>
-                      <th class="p-3 border">الوظيفة / الرقم</th>
-                      <th class="p-3 border">المؤشر</th>
-                      <th class="p-3 border text-center">التقييم</th>
-                      <th class="p-3 border">الملاحظات (الأخطاء)</th>
-                      <th class="p-3 border text-center">الكفاءة والتوصية</th>
+                   <tr class="text-xs font-bold text-slate-600">
+                      <th class="p-3 border border-[#E2E8F0]">التاريخ</th>
+                      <th class="p-3 border border-[#E2E8F0]">الاسم</th>
+                      <th class="p-3 border border-[#E2E8F0]">الوظيفة / الرقم</th>
+                      <th class="p-3 border border-[#E2E8F0]">المؤشر</th>
+                      <th class="p-3 border border-[#E2E8F0] text-center">التقييم</th>
+                      <th class="p-3 border border-[#E2E8F0]">الملاحظات (الأخطاء)</th>
+                      <th class="p-3 border border-[#E2E8F0] text-center">الكفاءة والتوصية</th>
                    </tr>
                 </thead>
                 <tbody id="indiv-tbody">
@@ -1197,15 +1592,18 @@
   </main>
 
   <!-- Footer -->
-  <footer class="bg-indigo-900 text-white text-center py-3 text-sm no-print flex-shrink-0">
+  <footer class="bg-white border-t border-[#E2E8F0] text-slate-500 text-center py-2.5 text-xs no-print flex-shrink-0">
     &copy; 2026 Dr. Fady Ezzat. All Rights Reserved
   </footer>
 
   <script>
     // --- Styles Helper ---
-    const INPUT_CLASS = "w-full border border-gray-300 p-2 rounded focus:outline-none focus:border-indigo-500 bg-white";
-    document.querySelectorAll('.input').forEach(el => el.className = INPUT_CLASS);
-    document.querySelectorAll('.label').forEach(el => el.className = "block text-sm font-bold mb-1 text-gray-600");
+    const INPUT_CLASS = "w-full border border-[#E2E8F0] px-3 py-2 rounded-xl focus:outline-none focus:border-[#0D9488] focus:ring-2 focus:ring-[#0D9488]/15 bg-white text-slate-800 text-sm transition";
+    document.querySelectorAll('.input').forEach(el => {
+      const extra = el.dataset.extra || '';
+      el.className = INPUT_CLASS + (extra ? ' ' + extra : '');
+    });
+    document.querySelectorAll('.label').forEach(el => el.className = "block text-xs font-semibold mb-1.5 text-slate-600");
 
     // --- State & Config ---
     let config = {};
@@ -1245,7 +1643,7 @@
        return (match && match.procedure) ? String(match.procedure).trim() : 'عام';
     }
 
-    // --- Navigation ---
+    // --- Navigation & Active State ---
     function nav(pageId) {
        if (pageId === 'settings' && currentUserRole !== 'admin' && currentUserRole !== 'user') return;
        if (pageId === 'entry' && currentUserRole === 'manager') return;
@@ -1253,6 +1651,12 @@
        document.querySelectorAll('.page').forEach(p => p.classList.add('hidden'));
        show(pageId);
        document.getElementById('mobile-menu').classList.add('hidden');
+       hide('alert-bell-popover');
+
+       document.querySelectorAll('.nav-btn').forEach(btn => {
+          if (btn.getAttribute('data-page') === pageId) btn.classList.add('active-nav');
+          else btn.classList.remove('active-nav');
+       });
        
        if (pageId === 'entry') initEntry();
        if (pageId === 'home') initDashboard();
@@ -1260,6 +1664,98 @@
        if (pageId === 'individuals') loadIndividuals();
        if (pageId === 'settings') renderSettingsPage();
        if (Object.keys(config).length === 0) loadSettings();
+    }
+
+    // --- Header Quick Search & Wired Alert Bell ---
+    function handleHeaderQuickSearch(query) {
+       const q = String(query || '').trim();
+       nav('report');
+       const repSearch = el('rep-search');
+       if (repSearch) {
+          repSearch.value = q;
+          filterReportsTable();
+       }
+    }
+
+    let alertBellAcknowledged = false;
+    function toggleAlertPopover() {
+       const pop = el('alert-bell-popover');
+       const btn = el('alert-bell-btn');
+       if (!pop) return;
+       const isHidden = pop.classList.contains('hidden');
+       if (isHidden) {
+          pop.classList.remove('hidden');
+          alertBellAcknowledged = true;
+          if (btn) btn.classList.add('acknowledged');
+          renderAlertBellContent();
+       } else {
+          pop.classList.add('hidden');
+       }
+    }
+
+    function renderAlertBellContent(dashData) {
+       const btn = el('alert-bell-btn');
+       const dot = el('alert-bell-dot');
+       const listEl = el('alert-bell-list');
+       if (!btn || !dot || !listEl) return;
+
+       const alerts = [];
+       if (Array.isArray(rawReportsList) && rawReportsList.length > 0) {
+          rawReportsList.forEach(r => {
+             const sc = Number(r.score || 0);
+             if (sc < 80) {
+                alerts.push({
+                   type: 'report',
+                   month: r.month,
+                   indicator: r.indicator,
+                   score: sc
+                });
+             }
+          });
+       }
+
+       if (dashData && typeof dashData.overallCompliance === 'number' && dashData.overallCompliance < 80) {
+          const curInd = el('dash-indicator')?.value || 'المؤشر الحالي';
+          const curMon = el('dash-month')?.value || '';
+          const already = alerts.some(a => a.indicator === curInd && a.month === curMon);
+          if (!already) {
+             alerts.unshift({
+                type: 'dash',
+                month: curMon,
+                indicator: curInd,
+                score: dashData.overallCompliance
+             });
+          }
+       }
+
+       if (alerts.length > 0) {
+          btn.classList.add('has-alert');
+          if (!alertBellAcknowledged) btn.classList.remove('acknowledged');
+          dot.classList.remove('hidden');
+          listEl.innerHTML = alerts.slice(0, 6).map(a => {
+             const escInd = (a.indicator || '').replace(/'/g, "\\'");
+             const escMon = (a.month || '').replace(/'/g, "\\'");
+             const badgeCls = a.score < 50 ? 'bg-[#FEE2E2] text-[#EF4444]' : 'bg-[#FEF3C7] text-[#F59E0B]';
+             return `
+                <button type="button" onclick="hide('alert-bell-popover'); nav('report'); viewSingleReport('${escMon}', '${escInd}')" class="w-full text-right p-2.5 rounded-xl bg-[#F8FAFC] hover:bg-[#F1F5F9] border border-[#E2E8F0] transition flex items-center justify-between gap-2">
+                   <div class="min-w-0">
+                      <div class="font-bold text-slate-800 truncate">${a.indicator}</div>
+                      <div class="text-[10px] text-slate-500 tabular-nums">${a.month || 'الشهر المحدد'} • دون المعيار (80%)</div>
+                   </div>
+                   <span class="tabular-nums px-2 py-0.5 rounded-full text-[11px] font-bold flex-shrink-0 ${badgeCls}">${a.score}%</span>
+                </button>
+             `;
+          }).join('');
+       } else {
+          btn.classList.remove('has-alert');
+          dot.classList.add('hidden');
+          listEl.innerHTML = `
+             <div class="text-center py-4 text-slate-500">
+                <i class="fas fa-check-circle text-[#10B981] text-xl mb-1.5 block"></i>
+                <p class="font-semibold text-slate-700">جميع المؤشرات المحملة ضمن النطاق الآمن</p>
+             </div>
+          `;
+       }
     }
 
     // --- Report Initialization ---
@@ -1375,13 +1871,11 @@
                // Draw text only if data > 0
                if (typeof data === 'number' && data > 0) {
                   ctx.save();
-                  ctx.fillStyle = '#1e293b'; // slate-800
-                  ctx.font = 'bold 11px Tajawal';
+                  ctx.fillStyle = '#0F172A';
+                  ctx.font = '600 11px Inter, "IBM Plex Sans Arabic", sans-serif';
                   ctx.textAlign = 'center';
                   ctx.textBaseline = 'bottom';
                   
-                  // Position for bar: x = center, y = top - margin
-                  // Position for line: x = x, y = y - margin
                   const x = element.x;
                   const y = element.y - 4;
                   
@@ -1393,22 +1887,90 @@
       }
     };
 
+    function renderDashboardSparkline(values) {
+       const pathEl = el('dash-sparkline-path');
+       const areaEl = el('dash-sparkline-area');
+       if (!pathEl || !areaEl) return;
+
+       const pts = (Array.isArray(values) ? values : []).map(v => Number(v) || 0);
+       if (pts.length === 0) {
+          pathEl.setAttribute('d', 'M 0 42 L 180 42');
+          areaEl.setAttribute('d', '');
+          return;
+       }
+       const w = 180, h = 44, padY = 4;
+       const step = pts.length > 1 ? w / (pts.length - 1) : w;
+       const coords = pts.map((v, i) => {
+          const x = pts.length === 1 ? w / 2 : +(i * step).toFixed(1);
+          const clamped = Math.max(0, Math.min(100, v));
+          const y = +(h - (clamped / 100) * (h - padY * 2) - padY).toFixed(1);
+          return { x, y };
+       });
+       const dLine = coords.map((c, i) => (i === 0 ? `M ${c.x} ${c.y}` : `L ${c.x} ${c.y}`)).join(' ');
+       const dArea = `${dLine} L ${coords[coords.length - 1].x} ${h} L ${coords[0].x} ${h} Z`;
+
+       pathEl.setAttribute('d', dLine);
+       areaEl.setAttribute('d', dArea);
+       // Re-trigger 600ms stroke draw on data update
+       pathEl.classList.remove('sparkline-path');
+       void pathEl.offsetWidth;
+       pathEl.classList.add('sparkline-path');
+    }
+
     function renderDashboardCharts(data) {
-       // Stats
-       el('stat-compliance').innerText = data.overallCompliance + '%';
-       el('stat-compliance').className = "text-3xl font-bold mt-1 " + (data.overallCompliance >= 80 ? "text-green-200" : "text-yellow-200");
+       const pct = Number(data.overallCompliance || 0);
+       const statEl = el('stat-compliance');
+       const pillEl = el('dash-compliance-pill');
+       const barEl = el('dash-compliance-bar');
+       const progLabelEl = el('dash-progress-label');
+
+       statEl.innerText = pct + '%';
+       if (pct >= 80) {
+          statEl.className = "tabular-nums text-3xl md:text-4xl font-bold text-[#0D9488]";
+          if (pillEl) {
+             pillEl.innerText = 'مطابق / ممتاز';
+             pillEl.className = 'px-2.5 py-0.5 rounded-full text-xs font-semibold bg-[#DCFCE7] text-[#10B981]';
+          }
+          if (barEl) barEl.style.backgroundColor = '#0D9488';
+       } else if (pct >= 50) {
+          statEl.className = "tabular-nums text-3xl md:text-4xl font-bold text-[#F59E0B]";
+          if (pillEl) {
+             pillEl.innerText = 'متوسط / قيد التحسين';
+             pillEl.className = 'px-2.5 py-0.5 rounded-full text-xs font-semibold bg-[#FEF3C7] text-[#F59E0B]';
+          }
+          if (barEl) barEl.style.backgroundColor = '#F59E0B';
+       } else {
+          statEl.className = "tabular-nums text-3xl md:text-4xl font-bold text-[#EF4444]";
+          if (pillEl) {
+             pillEl.innerText = 'يحتاج تدخل فوري';
+             pillEl.className = 'px-2.5 py-0.5 rounded-full text-xs font-semibold bg-[#FEE2E2] text-[#EF4444]';
+          }
+          if (barEl) barEl.style.backgroundColor = '#EF4444';
+       }
+       if (barEl) barEl.style.width = Math.max(0, Math.min(100, pct)) + '%';
+       if (progLabelEl) progLabelEl.innerText = pct + '%';
+
+       if (el('stat-total-inspections')) el('stat-total-inspections').innerText = data.totalInspections !== undefined ? data.totalInspections : 0;
+       if (el('stat-dept-count')) el('stat-dept-count').innerText = (data.monthlyDept && data.monthlyDept.labels) ? data.monthlyDept.labels.length : 0;
+       if (el('stat-cat-count')) el('stat-cat-count').innerText = (data.monthlyCat && data.monthlyCat.labels) ? data.monthlyCat.labels.length : 0;
+
+       renderDashboardSparkline(data.annual ? data.annual.data : []);
+       renderAlertBellContent(data);
        
        const commonOptions = {
           responsive: true,
           maintainAspectRatio: false,
-          scales: { y: { beginAtZero: true, max: 100 } },
+          scales: {
+             y: { beginAtZero: true, max: 100, grid: { color: '#F1F5F9' }, ticks: { color: '#64748B' } },
+             x: { grid: { display: false }, ticks: { color: '#475569' } }
+          },
           plugins: {
-             legend: { display: false }, // Optional: hide legend if single dataset
+             legend: { display: false },
              tooltip: { enabled: true }
           }
        };
 
-       // 1. Monthly Chart - Departments
+       // 1. Monthly Chart - Departments (Medical Teal #0D9488)
        if(chartDept) chartDept.destroy();
        const ctxD = el('chart-dept').getContext('2d');
        chartDept = new Chart(ctxD, {
@@ -1418,16 +1980,17 @@
              datasets: [{
                 label: 'نسبة الالتزام %',
                 data: data.monthlyDept.data,
-                backgroundColor: 'rgba(20, 184, 166, 0.7)', // Teal
-                borderColor: 'rgba(20, 184, 166, 1)',
-                borderWidth: 1
+                backgroundColor: 'rgba(13, 148, 136, 0.82)',
+                borderColor: '#0D9488',
+                borderWidth: 1,
+                borderRadius: 6
              }]
           },
           options: commonOptions,
           plugins: [percentageLabelPlugin]
        });
 
-       // 2. Monthly Chart - Categories
+       // 2. Monthly Chart - Categories (Calm Clinical Blue #0284C7)
        if(chartCat) chartCat.destroy();
        const ctxC = el('chart-cat').getContext('2d');
        chartCat = new Chart(ctxC, {
@@ -1437,16 +2000,17 @@
              datasets: [{
                 label: 'نسبة الالتزام %',
                 data: data.monthlyCat.data,
-                backgroundColor: 'rgba(79, 70, 229, 0.7)', // Indigo
-                borderColor: 'rgba(79, 70, 229, 1)',
-                borderWidth: 1
+                backgroundColor: 'rgba(2, 132, 199, 0.82)',
+                borderColor: '#0284C7',
+                borderWidth: 1,
+                borderRadius: 6
              }]
           },
           options: commonOptions,
           plugins: [percentageLabelPlugin]
        });
        
-       // 3. Annual Chart
+       // 3. Annual Chart (Calm Clinical Blue #0284C7 + Teal points)
        if(chartAnnual) chartAnnual.destroy();
        const ctxA = el('chart-annual').getContext('2d');
        chartAnnual = new Chart(ctxA, {
@@ -1456,10 +2020,14 @@
              datasets: [{
                 label: 'التطور السنوي %',
                 data: data.annual.data,
-                borderColor: 'rgba(147, 51, 234, 1)', // Purple
-                backgroundColor: 'rgba(147, 51, 234, 0.1)',
+                borderColor: '#0284C7',
+                backgroundColor: 'rgba(2, 132, 199, 0.1)',
+                pointBackgroundColor: '#0D9488',
+                pointBorderColor: '#FFFFFF',
+                pointBorderWidth: 2,
+                pointRadius: 4,
                 fill: true,
-                tension: 0.3
+                tension: 0.35
              }]
           },
           options: commonOptions,
@@ -1626,16 +2194,19 @@
 
        qs.forEach((q, idx) => {
           const div = document.createElement('div');
-          div.className = "bg-gray-50 border p-3 rounded flex flex-col sm:flex-row justify-between items-center gap-2";
+          div.className = "bg-white border border-[#E2E8F0] p-3.5 rounded-2xl flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3 transition hover:border-[#0D9488]/40";
           div.innerHTML = `
-             <div class="w-full sm:w-2/3">
-               ${q.procedure ? `<div class="text-xs font-semibold text-indigo-700 mb-1 inline-flex items-center gap-1 bg-indigo-50 px-2 py-0.5 rounded border border-indigo-100"><i class="fas fa-clipboard-check text-[10px]"></i> الإجراء: ${q.procedure}</div>` : ''}
-               <div class="text-sm font-bold text-gray-800">${q.question}</div>
+             <div class="flex items-start gap-3 w-full sm:w-2/3">
+               <span id="q-check-badge-${idx}" class="audit-check-badge mt-0.5" aria-hidden="true"></span>
+               <div>
+                 ${q.procedure ? `<div class="text-[11px] font-semibold text-[#0284C7] mb-1 inline-flex items-center gap-1 bg-[#0284C7]/10 px-2.5 py-0.5 rounded-full"><i class="fas fa-clipboard-check text-[10px]"></i> الإجراء: ${q.procedure}</div>` : ''}
+                 <div class="text-sm font-bold text-slate-800 leading-relaxed">${q.question}</div>
+               </div>
              </div>
-             <div class="flex gap-2 text-xs flex-shrink-0">
-               <label class="flex items-center cursor-pointer bg-white px-2 py-1 rounded border border-gray-200 hover:border-green-400"><input type="radio" name="q_${idx}" value="Yes" class="ml-1 accent-green-600" onchange="calcScore()"> نعم</label>
-               <label class="flex items-center cursor-pointer bg-white px-2 py-1 rounded border border-gray-200 hover:border-red-400"><input type="radio" name="q_${idx}" value="No" class="ml-1 accent-red-600" onchange="calcScore()"> لا</label>
-               <label class="flex items-center cursor-pointer bg-white px-2 py-1 rounded border border-gray-200 hover:border-gray-400"><input type="radio" name="q_${idx}" value="NA" class="ml-1 accent-gray-600" onchange="calcScore()"> غير منطبق</label>
+             <div class="flex gap-2 text-xs flex-shrink-0 self-end sm:self-center">
+               <label class="flex items-center cursor-pointer bg-[#F8FAFC] hover:bg-[#DCFCE7]/50 px-3 py-1.5 rounded-xl border border-[#E2E8F0] hover:border-[#10B981] transition font-semibold text-slate-700"><input type="radio" name="q_${idx}" value="Yes" class="ml-1.5 accent-[#10B981]" onchange="onEntryAnswerChange(${idx}, 'Yes')"> نعم</label>
+               <label class="flex items-center cursor-pointer bg-[#F8FAFC] hover:bg-[#FEE2E2]/50 px-3 py-1.5 rounded-xl border border-[#E2E8F0] hover:border-[#EF4444] transition font-semibold text-slate-700"><input type="radio" name="q_${idx}" value="No" class="ml-1.5 accent-[#EF4444]" onchange="onEntryAnswerChange(${idx}, 'No')"> لا</label>
+               <label class="flex items-center cursor-pointer bg-[#F8FAFC] hover:bg-slate-100 px-3 py-1.5 rounded-xl border border-[#E2E8F0] transition font-semibold text-slate-600"><input type="radio" name="q_${idx}" value="NA" class="ml-1.5 accent-slate-500" onchange="onEntryAnswerChange(${idx}, 'NA')"> غير منطبق</label>
                <input type="hidden" id="note_${idx}" value="${q.note || ''}">
              </div>
           `;
@@ -1643,6 +2214,25 @@
        });
        
        show('questions-area');
+       calcScore();
+    }
+
+    function onEntryAnswerChange(idx, val) {
+       const badge = el(`q-check-badge-${idx}`);
+       if (badge) {
+          badge.classList.remove('is-yes', 'is-no', 'is-na');
+          void badge.offsetWidth;
+          if (val === 'Yes') {
+             badge.classList.add('is-yes');
+             badge.innerHTML = `<svg viewBox="0 0 24 24" class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path class="check-svg-path" d="M5 13l4 4L19 7"/></svg>`;
+          } else if (val === 'No') {
+             badge.classList.add('is-no');
+             badge.innerHTML = `<svg viewBox="0 0 24 24" class="w-3.5 h-3.5" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round"><path d="M6 6l12 12M18 6L6 18"/></svg>`;
+          } else {
+             badge.classList.add('is-na');
+             badge.innerHTML = `<svg viewBox="0 0 24 24" class="w-3.5 h-3.5" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round"><path d="M6 12h12"/></svg>`;
+          }
+       }
        calcScore();
     }
 
@@ -1664,6 +2254,7 @@
        const liveScoreEl = el('live-score');
        const badgeEl = el('live-status-badge');
        const breakdownEl = el('live-items-breakdown');
+       const liveBarEl = el('entry-live-bar');
        const prevAvgEl = el('prev-avg-score');
        const prevSubEl = el('prev-avg-subtitle');
        const overallAvgEl = el('overall-projected-avg');
@@ -1686,11 +2277,15 @@
        if (validTotal === 0) {
            if (liveScoreEl) {
               liveScoreEl.innerText = '0%';
-              liveScoreEl.className = "text-3xl font-black text-gray-400";
+              liveScoreEl.className = "tabular-nums text-3xl font-bold text-slate-400";
            }
            if (badgeEl) {
               badgeEl.innerText = 'غير مكتمل';
-              badgeEl.className = "px-2.5 py-0.5 rounded-full text-xs font-bold bg-gray-200 text-gray-700";
+              badgeEl.className = "px-3 py-1 rounded-full text-xs font-semibold bg-[#F1F5F9] text-slate-600";
+           }
+           if (liveBarEl) {
+              liveBarEl.style.width = '0%';
+              liveBarEl.style.backgroundColor = '#0D9488';
            }
            if (breakdownEl) breakdownEl.innerText = `0 من ${totalQuestions} بنود مطابقة`;
 
@@ -1711,24 +2306,28 @@
        const score = Math.round((yesCount / validTotal) * 100);
        if (liveScoreEl) liveScoreEl.innerText = score + '%';
        if (breakdownEl) breakdownEl.innerText = `${yesCount} من ${validTotal} بنود مطابقة`;
+       if (liveBarEl) liveBarEl.style.width = `${score}%`;
 
        if (score >= 80) {
-           if (liveScoreEl) liveScoreEl.className = "text-3xl font-black text-green-600";
+           if (liveScoreEl) liveScoreEl.className = "tabular-nums text-3xl font-bold text-[#10B981]";
+           if (liveBarEl) liveBarEl.style.backgroundColor = '#0D9488';
            if (badgeEl) {
               badgeEl.innerText = "مطابق";
-              badgeEl.className = "px-2.5 py-0.5 rounded-full text-xs font-bold bg-green-100 text-green-800 border border-green-300";
+              badgeEl.className = "px-3 py-1 rounded-full text-xs font-semibold bg-[#DCFCE7] text-[#10B981]";
            }
        } else if (score >= 50) {
-           if (liveScoreEl) liveScoreEl.className = "text-3xl font-black text-orange-500";
+           if (liveScoreEl) liveScoreEl.className = "tabular-nums text-3xl font-bold text-[#F59E0B]";
+           if (liveBarEl) liveBarEl.style.backgroundColor = '#F59E0B';
            if (badgeEl) {
               badgeEl.innerText = "مطابق جزئياً";
-              badgeEl.className = "px-2.5 py-0.5 rounded-full text-xs font-bold bg-orange-100 text-orange-800 border border-orange-300";
+              badgeEl.className = "px-3 py-1 rounded-full text-xs font-semibold bg-[#FEF3C7] text-[#F59E0B]";
            }
        } else {
-           if (liveScoreEl) liveScoreEl.className = "text-3xl font-black text-red-600";
+           if (liveScoreEl) liveScoreEl.className = "tabular-nums text-3xl font-bold text-[#EF4444]";
+           if (liveBarEl) liveBarEl.style.backgroundColor = '#EF4444';
            if (badgeEl) {
               badgeEl.innerText = "غير مطابق";
-              badgeEl.className = "px-2.5 py-0.5 rounded-full text-xs font-bold bg-red-100 text-red-800 border border-red-300";
+              badgeEl.className = "px-3 py-1 rounded-full text-xs font-semibold bg-[#FEE2E2] text-[#EF4444]";
            }
        }
 
@@ -1841,6 +2440,7 @@
        if (!force && cached && (now - cached.timestamp < 60000)) {
           rawReportsList = cached.data || [];
           filterReportsTable();
+          renderAlertBellContent();
           return;
        }
 
@@ -1852,6 +2452,7 @@
           rawReportsList = data || [];
           clientReportsSummaryCache.set(m, { data: rawReportsList, timestamp: Date.now() });
           filterReportsTable();
+          renderAlertBellContent();
        }).withFailureHandler(err => {
           loading(false);
           alert("خطأ أثناء جلب قائمة التقارير: " + err);
@@ -1878,69 +2479,71 @@
        if (selectAllCheckbox) selectAllCheckbox.checked = false;
 
        if (items.length === 0) {
-          tbody.innerHTML = `<tr><td colspan="6" class="p-8 text-center text-gray-400 font-medium">لا توجد تقارير مسجلة للفترة المحددة</td></tr>`;
+          tbody.innerHTML = `<tr><td colspan="6" class="p-8 text-center text-slate-400 font-medium">لا توجد تقارير مسجلة للفترة المحددة</td></tr>`;
           updateSelectedReportsCount();
           return;
        }
 
        items.forEach((r, idx) => {
           const tr = document.createElement('tr');
-          tr.className = 'border-b hover:bg-slate-50/80 transition';
+          tr.className = 'border-b border-[#E2E8F0] hover:bg-[#F8FAFC] transition';
 
           const pct = r.score !== undefined ? r.score : 0;
-          let badgeColor = 'bg-red-100 text-red-800 border-red-200';
-          if (pct >= 80) badgeColor = 'bg-green-100 text-green-800 border-green-200';
-          else if (pct >= 50) badgeColor = 'bg-amber-100 text-amber-800 border-amber-200';
+          let badgeColor = 'bg-[#FEE2E2] text-[#EF4444]';
+          if (pct >= 80) badgeColor = 'bg-[#DCFCE7] text-[#10B981]';
+          else if (pct >= 50) badgeColor = 'bg-[#FEF3C7] text-[#F59E0B]';
 
           const escInd = (r.indicator || '').replace(/'/g, "\\'");
           const escMonth = (r.month || '').replace(/'/g, "\\'");
 
           tr.innerHTML = `
-             <td class="p-3 border-l text-center">
-                <input type="checkbox" class="report-checkbox w-4 h-4 accent-indigo-600 cursor-pointer" data-month="${r.month}" data-indicator="${r.indicator}" onchange="updateSelectedReportsCount()">
+             <td class="p-3 border-l border-[#E2E8F0] text-center">
+                <input type="checkbox" class="report-checkbox w-4 h-4 accent-[#0D9488] cursor-pointer" data-month="${r.month}" data-indicator="${r.indicator}" onchange="updateSelectedReportsCount()">
              </td>
-             <td class="p-3 border-l font-semibold text-gray-700 text-xs">${r.month}</td>
-             <td class="p-3 border-l font-bold text-indigo-950">
-                <div class="flex items-center gap-1.5">
-                   <i class="fas fa-chart-pie text-indigo-500 text-xs"></i>
+             <td class="p-3 border-l border-[#E2E8F0] font-semibold text-slate-700 text-xs tabular-nums">${r.month}</td>
+             <td class="p-3 border-l border-[#E2E8F0] font-bold text-slate-900">
+                <div class="flex items-center gap-2">
+                   <span class="w-7 h-7 rounded-lg bg-[#0D9488]/10 text-[#0D9488] flex items-center justify-center text-xs flex-shrink-0">
+                      <i class="fas fa-chart-pie"></i>
+                   </span>
                    <span>${r.indicator}</span>
                 </div>
              </td>
-             <td class="p-3 border-l text-center">
-                <span class="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-black border ${badgeColor} shadow-2xs">
+             <td class="p-3 border-l border-[#E2E8F0] text-center">
+                <span class="tabular-nums inline-flex items-center px-3 py-1 rounded-full text-xs font-bold ${badgeColor}">
                    ${pct}%
                 </span>
-                <span class="block text-[10px] text-gray-400 mt-0.5">${r.totalYes || 0} من ${r.totalValid || 0}</span>
+                <span class="block text-[10px] text-slate-400 mt-1 tabular-nums">${r.totalYes || 0} من ${r.totalValid || 0}</span>
              </td>
-             <td class="p-3 border-l text-center text-xs text-gray-600">
-                <div class="flex flex-col items-center gap-1">
-                   <span class="bg-gray-100 text-gray-700 px-2 py-0.5 rounded text-[11px] font-semibold">${r.sessionsCount || 1} جلسات</span>
-                   <button type="button" onclick="openMultiplySessionsModal('${escMonth}', '${escInd}')" class="text-[10px] text-purple-700 hover:text-purple-900 bg-purple-50 hover:bg-purple-100 border border-purple-200 px-1.5 py-0.5 rounded font-bold transition flex items-center gap-0.5 shadow-2xs" title="مضاعفة جلسات هذا المؤشر في نفس الشهر">
+             <td class="p-3 border-l border-[#E2E8F0] text-center text-xs text-slate-600">
+                <div class="flex flex-col items-center gap-1.5">
+                   <span class="tabular-nums bg-[#F1F5F9] text-slate-700 px-2.5 py-0.5 rounded-full text-[11px] font-semibold">${r.sessionsCount || 1} جلسات</span>
+                   <button type="button" onclick="openMultiplySessionsModal('${escMonth}', '${escInd}')" class="text-[10px] text-[#0284C7] hover:bg-[#0284C7]/15 bg-[#0284C7]/10 px-2 py-0.5 rounded-full font-bold transition flex items-center gap-1" title="مضاعفة جلسات هذا المؤشر في نفس الشهر">
                       <i class="fas fa-layer-group text-[9px]"></i> مضاعفة
                    </button>
                 </div>
              </td>
              <td class="p-3 text-center">
                 <div class="flex items-center justify-center gap-1.5 flex-wrap">
-                   <button type="button" onclick="viewSingleReport('${escMonth}', '${escInd}')" class="bg-indigo-50 hover:bg-indigo-100 text-indigo-700 border border-indigo-200 px-2.5 py-1 rounded text-xs font-semibold flex items-center gap-1 transition" title="فتح ومعاينة تقرير المؤشر">
+                   <button type="button" onclick="viewSingleReport('${escMonth}', '${escInd}')" class="bg-[#0D9488]/10 hover:bg-[#0D9488]/20 text-[#0D9488] px-2.5 py-1 rounded-lg text-xs font-semibold flex items-center gap-1 transition" title="فتح ومعاينة تقرير المؤشر">
                       <i class="fas fa-eye text-[11px]"></i> فتح
                    </button>
-                   <button type="button" onclick="exportSingleReportToExcel('${escMonth}', '${escInd}')" class="bg-emerald-50 hover:bg-emerald-100 text-emerald-800 border border-emerald-300 px-2.5 py-1 rounded text-xs font-semibold flex items-center gap-1 transition" title="حفظ هذا المؤشر في شيت إكسيل">
-                      <i class="fas fa-file-excel text-[11px] text-emerald-600"></i> إكسيل
+                   <button type="button" onclick="exportSingleReportToExcel('${escMonth}', '${escInd}')" class="bg-[#DCFCE7]/70 hover:bg-[#DCFCE7] text-[#047857] px-2.5 py-1 rounded-lg text-xs font-semibold flex items-center gap-1 transition" title="حفظ هذا المؤشر في شيت إكسيل">
+                      <i class="fas fa-file-excel text-[11px] text-[#10B981]"></i> إكسيل
                    </button>
-                   <button type="button" onclick="openEditReportModal('${escMonth}', '${escInd}')" class="bg-amber-50 hover:bg-amber-100 text-amber-800 border border-amber-200 px-2.5 py-1 rounded text-xs font-semibold flex items-center gap-1 transition" title="تعديل تقييمات وجلسات هذا المؤشر">
+                   <button type="button" onclick="openEditReportModal('${escMonth}', '${escInd}')" class="bg-[#FEF3C7]/80 hover:bg-[#FEF3C7] text-[#B45309] px-2.5 py-1 rounded-lg text-xs font-semibold flex items-center gap-1 transition" title="تعديل تقييمات وجلسات هذا المؤشر">
                       <i class="fas fa-edit text-[11px]"></i> تعديل
                    </button>
-                   <button type="button" onclick="openMultiplySessionsModal('${escMonth}', '${escInd}')" class="bg-purple-50 hover:bg-purple-100 text-purple-800 border border-purple-200 px-2.5 py-1 rounded text-xs font-semibold flex items-center gap-1 transition" title="مضاعفة عدد الجلسات المحفوظة لهذا المؤشر في نفس الشهر">
-                      <i class="fas fa-layer-group text-[11px] text-purple-600"></i> مضاعفة
+                   <button type="button" onclick="openMultiplySessionsModal('${escMonth}', '${escInd}')" class="bg-[#0284C7]/10 hover:bg-[#0284C7]/20 text-[#0284C7] px-2.5 py-1 rounded-lg text-xs font-semibold flex items-center gap-1 transition" title="مضاعفة عدد الجلسات المحفوظة لهذا المؤشر في نفس الشهر">
+                      <i class="fas fa-layer-group text-[11px]"></i> مضاعفة
                    </button>
-                   <button type="button" onclick="openDuplicateReportModal('${escMonth}', '${escInd}')" class="bg-teal-50 hover:bg-teal-100 text-teal-800 border border-teal-200 px-2.5 py-1 rounded text-xs font-semibold flex items-center gap-1 transition" title="نسخ هذا المؤشر والتعديل على الشهر والإحصائية">
+                   <button type="button" onclick="openDuplicateReportModal('${escMonth}', '${escInd}')" class="bg-[#F1F5F9] hover:bg-slate-200 text-slate-700 px-2.5 py-1 rounded-lg text-xs font-semibold flex items-center gap-1 transition" title="نسخ هذا المؤشر والتعديل على الشهر والإحصائية">
                       <i class="fas fa-copy text-[11px]"></i> نسخ
                    </button>
-                   <button type="button" onclick="printSingleReport('${escMonth}', '${escInd}')" class="bg-slate-100 hover:bg-slate-200 text-slate-800 border border-slate-300 px-2.5 py-1 rounded text-xs font-semibold flex items-center gap-1 transition" title="طباعة هذا التقرير">
+                   <button type="button" onclick="printSingleReport('${escMonth}', '${escInd}')" class="bg-[#F1F5F9] hover:bg-slate-200 text-slate-800 px-2.5 py-1 rounded-lg text-xs font-semibold flex items-center gap-1 transition" title="طباعة هذا التقرير">
                       <i class="fas fa-print text-[11px]"></i> طباعة
                    </button>
-                   <button type="button" onclick="deleteSingleReport('${escMonth}', '${escInd}')" class="bg-red-50 hover:bg-red-100 text-red-700 border border-red-200 px-2 py-1 rounded text-xs font-semibold flex items-center gap-1 transition" title="حذف هذا التقرير">
+                   <button type="button" onclick="deleteSingleReport('${escMonth}', '${escInd}')" class="bg-[#FEE2E2]/80 hover:bg-[#FEE2E2] text-[#EF4444] px-2 py-1 rounded-lg text-xs font-semibold flex items-center gap-1 transition" title="حذف هذا التقرير">
                       <i class="fas fa-trash-alt text-[11px]"></i> حذف
                    </button>
                 </div>
@@ -2659,35 +3262,35 @@
 
           const pName = r.procedure || getProcedureForQuestion(r.question, currentEditingIndicator) || 'عام';
           tr.innerHTML = `
-             <td class="p-2.5 border-l text-center text-xs text-gray-500 font-mono">${idx + 1}</td>
-             <td class="p-2.5 border-l">
-                <div class="inline-flex items-center gap-1 text-[10px] font-bold text-indigo-700 bg-indigo-50 px-2 py-0.5 rounded border border-indigo-100 mb-1">
+             <td class="p-2.5 border-l border-[#E2E8F0] text-center text-xs text-slate-500 tabular-nums">${idx + 1}</td>
+             <td class="p-2.5 border-l border-[#E2E8F0]">
+                <div class="inline-flex items-center gap-1 text-[10px] font-bold text-[#0284C7] bg-[#0284C7]/10 px-2 py-0.5 rounded-full mb-1">
                    <i class="fas fa-stethoscope text-[9px]"></i> الإجراء: ${pName}
                 </div>
-                <div class="text-xs font-bold text-gray-800 leading-relaxed">${r.question}</div>
-                ${sessionLabel ? `<div class="text-[10px] text-gray-400 mt-0.5">${sessionLabel} | ${r.date || ''}</div>` : ''}
+                <div class="text-xs font-bold text-slate-800 leading-relaxed">${r.question}</div>
+                ${sessionLabel ? `<div class="text-[10px] text-slate-400 mt-0.5 tabular-nums">${sessionLabel} | ${r.date || ''}</div>` : ''}
              </td>
-             <td class="p-2.5 border-l text-xs text-indigo-900 font-semibold bg-indigo-50/40">
+             <td class="p-2.5 border-l border-[#E2E8F0] text-xs text-slate-700 font-semibold bg-[#F8FAFC]">
                 ${deptCatStr}
              </td>
-             <td class="p-2.5 border-l text-center">
-                <div class="inline-flex gap-1 bg-white p-1 rounded-md border border-gray-200 shadow-2xs text-xs">
-                   <label class="flex items-center px-2 py-0.5 rounded cursor-pointer hover:bg-green-50">
-                      <input type="radio" name="edit_ans_${idx}" value="Yes" ${curAns === 'Yes' ? 'checked' : ''} class="accent-green-600 ml-1" onchange="onModalAnswerChange(${idx}, 'Yes')">
-                      <span class="font-bold text-green-700">نعم</span>
+             <td class="p-2.5 border-l border-[#E2E8F0] text-center">
+                <div class="inline-flex gap-1 bg-[#F8FAFC] p-1 rounded-xl border border-[#E2E8F0] text-xs">
+                   <label class="flex items-center px-2 py-0.5 rounded-lg cursor-pointer hover:bg-[#DCFCE7]">
+                      <input type="radio" name="edit_ans_${idx}" value="Yes" ${curAns === 'Yes' ? 'checked' : ''} class="accent-[#10B981] ml-1" onchange="onModalAnswerChange(${idx}, 'Yes')">
+                      <span class="font-bold text-[#047857]">نعم</span>
                    </label>
-                   <label class="flex items-center px-2 py-0.5 rounded cursor-pointer hover:bg-red-50">
-                      <input type="radio" name="edit_ans_${idx}" value="No" ${curAns === 'No' ? 'checked' : ''} class="accent-red-600 ml-1" onchange="onModalAnswerChange(${idx}, 'No')">
-                      <span class="font-bold text-red-700">لا</span>
+                   <label class="flex items-center px-2 py-0.5 rounded-lg cursor-pointer hover:bg-[#FEE2E2]">
+                      <input type="radio" name="edit_ans_${idx}" value="No" ${curAns === 'No' ? 'checked' : ''} class="accent-[#EF4444] ml-1" onchange="onModalAnswerChange(${idx}, 'No')">
+                      <span class="font-bold text-[#B91C1C]">لا</span>
                    </label>
-                   <label class="flex items-center px-2 py-0.5 rounded cursor-pointer hover:bg-gray-100">
-                      <input type="radio" name="edit_ans_${idx}" value="NA" ${curAns === 'NA' ? 'checked' : ''} class="accent-gray-600 ml-1" onchange="onModalAnswerChange(${idx}, 'NA')">
-                      <span class="text-gray-600">غير منطبق</span>
+                   <label class="flex items-center px-2 py-0.5 rounded-lg cursor-pointer hover:bg-slate-200/70">
+                      <input type="radio" name="edit_ans_${idx}" value="NA" ${curAns === 'NA' ? 'checked' : ''} class="accent-slate-500 ml-1" onchange="onModalAnswerChange(${idx}, 'NA')">
+                      <span class="text-slate-600">غير منطبق</span>
                    </label>
                 </div>
              </td>
              <td class="p-2.5">
-                <input type="text" id="edit_note_${idx}" value="${curNote.replace(/"/g, '&quot;')}" placeholder="ملاحظة عند الخطأ..." class="input text-xs py-1 px-2 border-gray-300 w-full" oninput="onModalNoteChange(${idx}, this.value)">
+                <input type="text" id="edit_note_${idx}" value="${curNote.replace(/"/g, '&quot;')}" placeholder="ملاحظة عند الخطأ..." class="input text-xs py-1.5 px-2.5 w-full" oninput="onModalNoteChange(${idx}, this.value)">
              </td>
           `;
           tbody.appendChild(tr);
@@ -2728,7 +3331,7 @@
 
        if (scoreEl) {
           scoreEl.innerText = `${pct}%`;
-          scoreEl.className = 'px-3 py-1 rounded-full font-black text-sm border shadow-2xs ' + (pct >= 80 ? 'bg-green-100 text-green-800 border-green-200' : (pct >= 50 ? 'bg-amber-100 text-amber-800 border-amber-200' : 'bg-red-100 text-red-800 border-red-200'));
+          scoreEl.className = 'tabular-nums px-3 py-1 rounded-full font-bold text-xs ' + (pct >= 80 ? 'bg-[#DCFCE7] text-[#10B981]' : (pct >= 50 ? 'bg-[#FEF3C7] text-[#F59E0B]' : 'bg-[#FEE2E2] text-[#EF4444]'));
        }
 
        if (countsEl) {
@@ -2866,35 +3469,35 @@
 
           const pName = r.procedure || getProcedureForQuestion(r.question, currentDuplicateIndicator) || 'عام';
           tr.innerHTML = `
-             <td class="p-2.5 border-l text-center text-xs text-gray-500 font-mono">${idx + 1}</td>
-             <td class="p-2.5 border-l">
-                <div class="inline-flex items-center gap-1 text-[10px] font-bold text-emerald-800 bg-emerald-50 px-2 py-0.5 rounded border border-emerald-100 mb-1">
+             <td class="p-2.5 border-l border-[#E2E8F0] text-center text-xs text-slate-500 tabular-nums">${idx + 1}</td>
+             <td class="p-2.5 border-l border-[#E2E8F0]">
+                <div class="inline-flex items-center gap-1 text-[10px] font-bold text-[#0D9488] bg-[#0D9488]/10 px-2 py-0.5 rounded-full mb-1">
                    <i class="fas fa-stethoscope text-[9px]"></i> الإجراء: ${pName}
                 </div>
-                <div class="text-xs font-bold text-gray-800 leading-relaxed">${r.question}</div>
-                ${sessionLabel ? `<div class="text-[10px] text-gray-400 mt-0.5">${sessionLabel}</div>` : ''}
+                <div class="text-xs font-bold text-slate-800 leading-relaxed">${r.question}</div>
+                ${sessionLabel ? `<div class="text-[10px] text-slate-400 mt-0.5 tabular-nums">${sessionLabel}</div>` : ''}
              </td>
-             <td class="p-2.5 border-l text-xs text-emerald-950 font-semibold bg-emerald-50/30">
+             <td class="p-2.5 border-l border-[#E2E8F0] text-xs text-slate-700 font-semibold bg-[#F8FAFC]">
                 ${deptCatStr}
              </td>
-             <td class="p-2.5 border-l text-center">
-                <div class="inline-flex gap-1 bg-white p-1 rounded-md border border-gray-200 shadow-2xs text-xs">
-                   <label class="flex items-center px-2 py-0.5 rounded cursor-pointer hover:bg-green-50">
-                      <input type="radio" name="dup_ans_${idx}" value="Yes" ${curAns === 'Yes' ? 'checked' : ''} class="accent-green-600 ml-1" onchange="onDuplicateAnswerChange(${idx}, 'Yes')">
-                      <span class="font-bold text-green-700">نعم</span>
+             <td class="p-2.5 border-l border-[#E2E8F0] text-center">
+                <div class="inline-flex gap-1 bg-[#F8FAFC] p-1 rounded-xl border border-[#E2E8F0] text-xs">
+                   <label class="flex items-center px-2 py-0.5 rounded-lg cursor-pointer hover:bg-[#DCFCE7]">
+                      <input type="radio" name="dup_ans_${idx}" value="Yes" ${curAns === 'Yes' ? 'checked' : ''} class="accent-[#10B981] ml-1" onchange="onDuplicateAnswerChange(${idx}, 'Yes')">
+                      <span class="font-bold text-[#047857]">نعم</span>
                    </label>
-                   <label class="flex items-center px-2 py-0.5 rounded cursor-pointer hover:bg-red-50">
-                      <input type="radio" name="dup_ans_${idx}" value="No" ${curAns === 'No' ? 'checked' : ''} class="accent-red-600 ml-1" onchange="onDuplicateAnswerChange(${idx}, 'No')">
-                      <span class="font-bold text-red-700">لا</span>
+                   <label class="flex items-center px-2 py-0.5 rounded-lg cursor-pointer hover:bg-[#FEE2E2]">
+                      <input type="radio" name="dup_ans_${idx}" value="No" ${curAns === 'No' ? 'checked' : ''} class="accent-[#EF4444] ml-1" onchange="onDuplicateAnswerChange(${idx}, 'No')">
+                      <span class="font-bold text-[#B91C1C]">لا</span>
                    </label>
-                   <label class="flex items-center px-2 py-0.5 rounded cursor-pointer hover:bg-gray-100">
-                      <input type="radio" name="dup_ans_${idx}" value="NA" ${curAns === 'NA' ? 'checked' : ''} class="accent-gray-600 ml-1" onchange="onDuplicateAnswerChange(${idx}, 'NA')">
-                      <span class="text-gray-600">غير منطبق</span>
+                   <label class="flex items-center px-2 py-0.5 rounded-lg cursor-pointer hover:bg-slate-200/70">
+                      <input type="radio" name="dup_ans_${idx}" value="NA" ${curAns === 'NA' ? 'checked' : ''} class="accent-slate-500 ml-1" onchange="onDuplicateAnswerChange(${idx}, 'NA')">
+                      <span class="text-slate-600">غير منطبق</span>
                    </label>
                 </div>
              </td>
              <td class="p-2.5">
-                <input type="text" id="dup_note_${idx}" value="${curNote.replace(/"/g, '&quot;')}" placeholder="ملاحظة عند الخطأ..." class="input text-xs py-1 px-2 border-gray-300 w-full" oninput="onDuplicateNoteChange(${idx}, this.value)">
+                <input type="text" id="dup_note_${idx}" value="${curNote.replace(/"/g, '&quot;')}" placeholder="ملاحظة عند الخطأ..." class="input text-xs py-1.5 px-2.5 w-full" oninput="onDuplicateNoteChange(${idx}, this.value)">
              </td>
           `;
           tbody.appendChild(tr);
@@ -2957,7 +3560,7 @@
 
        if (scoreEl) {
           scoreEl.innerText = `${pct}%`;
-          scoreEl.className = 'px-3 py-1 rounded-full font-black text-sm border shadow-2xs ' + (pct >= 80 ? 'bg-green-100 text-green-800 border-green-200' : (pct >= 50 ? 'bg-amber-100 text-amber-800 border-amber-200' : 'bg-red-100 text-red-800 border-red-200'));
+          scoreEl.className = 'tabular-nums px-3 py-1 rounded-full font-bold text-xs ' + (pct >= 80 ? 'bg-[#DCFCE7] text-[#10B981]' : (pct >= 50 ? 'bg-[#FEF3C7] text-[#F59E0B]' : 'bg-[#FEE2E2] text-[#EF4444]'));
        }
 
        if (countsEl) {
@@ -3075,7 +3678,7 @@
        const badge = el('mult-current-score-badge');
        if (badge) {
           badge.innerText = `الالتزام الحالي: ${pct}%`;
-          badge.className = 'px-2.5 py-0.5 rounded-full text-xs font-black border ' + (pct >= 80 ? 'bg-emerald-100 text-emerald-800 border-emerald-200' : (pct >= 50 ? 'bg-amber-100 text-amber-800 border-amber-200' : 'bg-red-100 text-red-800 border-red-200'));
+          badge.className = 'tabular-nums px-2.5 py-0.5 rounded-full text-xs font-bold ' + (pct >= 80 ? 'bg-[#DCFCE7] text-[#10B981]' : (pct >= 50 ? 'bg-[#FEF3C7] text-[#F59E0B]' : 'bg-[#FEE2E2] text-[#EF4444]'));
        }
 
        // Reset custom date input
@@ -3103,9 +3706,9 @@
           const btn = el(`btn-factor-${f}`);
           if (btn) {
              if (f === currentMultiplyFactor) {
-                btn.className = 'mult-factor-btn p-3 rounded-xl border-2 border-purple-600 bg-purple-50 text-purple-950 font-bold text-center transition flex flex-col items-center justify-center gap-1 shadow-xs';
+                btn.className = 'mult-factor-btn p-3 rounded-xl border-2 border-[#0D9488] bg-[#0D9488]/10 text-slate-900 font-bold text-center transition flex flex-col items-center justify-center gap-1';
              } else {
-                btn.className = 'mult-factor-btn p-3 rounded-xl border border-gray-200 bg-white hover:bg-purple-50/50 text-gray-700 font-bold text-center transition flex flex-col items-center justify-center gap-1 shadow-2xs';
+                btn.className = 'mult-factor-btn p-3 rounded-xl border border-[#E2E8F0] bg-white hover:bg-[#F8FAFC] text-slate-700 font-bold text-center transition flex flex-col items-center justify-center gap-1';
              }
           }
        });
@@ -3121,9 +3724,9 @@
              const btn = el(`btn-factor-${f}`);
              if (btn) {
                 if (f === currentMultiplyFactor) {
-                   btn.className = 'mult-factor-btn p-3 rounded-xl border-2 border-purple-600 bg-purple-50 text-purple-950 font-bold text-center transition flex flex-col items-center justify-center gap-1 shadow-xs';
+                   btn.className = 'mult-factor-btn p-3 rounded-xl border-2 border-[#0D9488] bg-[#0D9488]/10 text-slate-900 font-bold text-center transition flex flex-col items-center justify-center gap-1';
                 } else {
-                   btn.className = 'mult-factor-btn p-3 rounded-xl border border-gray-200 bg-white hover:bg-purple-50/50 text-gray-700 font-bold text-center transition flex flex-col items-center justify-center gap-1 shadow-2xs';
+                   btn.className = 'mult-factor-btn p-3 rounded-xl border border-[#E2E8F0] bg-white hover:bg-[#F8FAFC] text-slate-700 font-bold text-center transition flex flex-col items-center justify-center gap-1';
                 }
              }
           });
@@ -3597,37 +4200,35 @@
           const dt = new Date(row.date);
           const dateStr = dt.toLocaleDateString('ar-EG');
           
-          let scoreClass = 'text-green-600 font-bold';
+          let scoreClass = 'text-[#10B981] font-bold tabular-nums';
           let compStatus = 'كفء';
           let compRec = '---';
-          let badgeClass = 'bg-green-100 text-green-800';
+          let badgeClass = 'bg-[#DCFCE7] text-[#10B981]';
 
           if (row.score < 50) {
-              scoreClass = 'text-red-600 font-bold';
+              scoreClass = 'text-[#EF4444] font-bold tabular-nums';
               compStatus = 'غير كفء';
               compRec = 'بحاجة للتدريب';
-              badgeClass = 'bg-red-100 text-red-800 border border-red-200';
+              badgeClass = 'bg-[#FEE2E2] text-[#EF4444]';
           } else if (row.score <= 75) {
-              scoreClass = 'text-orange-500 font-bold';
+              scoreClass = 'text-[#F59E0B] font-bold tabular-nums';
               compStatus = 'مقبول';
               compRec = 'مراجعة التدريب واعادة التقييم';
-              badgeClass = 'bg-orange-100 text-orange-800 border border-orange-200';
-          } else {
-              badgeClass = 'bg-green-100 text-green-800 border border-green-200';
+              badgeClass = 'bg-[#FEF3C7] text-[#F59E0B]';
           }
           
           const tr = document.createElement('tr');
-          tr.className = 'border-b hover:bg-gray-50';
+          tr.className = 'border-b border-[#E2E8F0] hover:bg-[#F8FAFC] transition';
           tr.innerHTML = `
-             <td class="p-3 border whitespace-nowrap">${dateStr}</td>
-             <td class="p-3 border font-bold">${row.name}</td>
-             <td class="p-3 border text-gray-600">${row.jobId}</td>
-             <td class="p-3 border">${row.indicator}</td>
-             <td class="p-3 border text-center ${scoreClass}">${row.score}%</td>
-             <td class="p-3 border text-red-600 text-[11px] leading-relaxed max-w-[250px] text-right">${row.notes || '---'}</td>
-             <td class="p-3 border text-center text-xs">
-                <div class="inline-block px-2 py-1 rounded font-bold ${badgeClass} mb-1">${compStatus}</div>
-                <div class="text-gray-700 font-bold mt-1">${compRec}</div>
+             <td class="p-3 border border-[#E2E8F0] whitespace-nowrap tabular-nums">${dateStr}</td>
+             <td class="p-3 border border-[#E2E8F0] font-bold text-slate-900">${row.name}</td>
+             <td class="p-3 border border-[#E2E8F0] text-slate-600 tabular-nums">${row.jobId}</td>
+             <td class="p-3 border border-[#E2E8F0] text-slate-800">${row.indicator}</td>
+             <td class="p-3 border border-[#E2E8F0] text-center ${scoreClass}">${row.score}%</td>
+             <td class="p-3 border border-[#E2E8F0] text-[#EF4444] text-[11px] leading-relaxed max-w-[250px] text-right">${row.notes || '---'}</td>
+             <td class="p-3 border border-[#E2E8F0] text-center text-xs">
+                <div class="inline-block px-3 py-0.5 rounded-full font-bold ${badgeClass} mb-1">${compStatus}</div>
+                <div class="text-slate-700 font-semibold mt-0.5">${compRec}</div>
              </td>
           `;
           tbody.appendChild(tr);
@@ -3842,19 +4443,19 @@
 
           // 1. Group Header: Indicator
           const indTr = document.createElement('tr');
-          indTr.className = 'bg-slate-100 font-bold text-indigo-950 border-t-2 border-indigo-300';
+          indTr.className = 'bg-[#F8FAFC] font-bold text-slate-900 border-t-2 border-[#0D9488]/30';
           
           let indActionsHtml = '';
           if (isAdmin) {
              indActionsHtml = `
                 <div class="flex items-center gap-1.5 flex-wrap">
-                   <button type="button" onclick="openRenameIndicatorModal('${indName.replace(/'/g, "\\'")}')" class="text-[11px] bg-white border border-amber-300 text-amber-800 hover:bg-amber-50 px-2.5 py-1 rounded font-bold transition flex items-center gap-1 shadow-2xs" title="تعديل اسم هذا المؤشر">
-                      <i class="fas fa-pen text-amber-600 text-[10px]"></i> تعديل اسم المؤشر
+                   <button type="button" onclick="openRenameIndicatorModal('${indName.replace(/'/g, "\\'")}')" class="text-[11px] bg-[#FEF3C7]/80 text-[#B45309] hover:bg-[#FEF3C7] px-2.5 py-1 rounded-lg font-bold transition flex items-center gap-1" title="تعديل اسم هذا المؤشر">
+                      <i class="fas fa-pen text-[10px]"></i> تعديل اسم المؤشر
                    </button>
-                   <button type="button" onclick="openAddProcedureModal('${indName.replace(/'/g, "\\'")}')" class="text-[11px] bg-white border border-emerald-300 text-emerald-800 hover:bg-emerald-50 px-2.5 py-1 rounded font-bold transition flex items-center gap-1 shadow-2xs" title="إضافة إجراء جديد لهذا المؤشر وربطه بالتقارير">
-                      <i class="fas fa-plus-circle text-emerald-600 text-[10px]"></i> إضافة إجراء للمؤشر
+                   <button type="button" onclick="openAddProcedureModal('${indName.replace(/'/g, "\\'")}')" class="text-[11px] bg-[#DCFCE7]/80 text-[#047857] hover:bg-[#DCFCE7] px-2.5 py-1 rounded-lg font-bold transition flex items-center gap-1" title="إضافة إجراء جديد لهذا المؤشر وربطه بالتقارير">
+                      <i class="fas fa-plus-circle text-[10px]"></i> إضافة إجراء للمؤشر
                    </button>
-                   <button type="button" onclick="quickAddUnderInd('${indName.replace(/'/g, "\\'")}')" class="text-[11px] bg-white border border-indigo-200 text-indigo-700 hover:bg-indigo-50 px-2 py-1 rounded transition" title="إضافة سؤال جديد لهذا المؤشر">
+                   <button type="button" onclick="quickAddUnderInd('${indName.replace(/'/g, "\\'")}')" class="text-[11px] bg-white border border-[#E2E8F0] text-[#0D9488] hover:bg-[#0D9488]/10 px-2.5 py-1 rounded-lg font-semibold transition" title="إضافة سؤال جديد لهذا المؤشر">
                       <i class="fas fa-plus ml-1"></i> إضافة سؤال لهذا المؤشر
                    </button>
                 </div>
@@ -3862,14 +4463,14 @@
           }
 
           indTr.innerHTML = `
-             <td colspan="${indColspan}" class="p-2.5 bg-slate-100">
-                <div class="flex items-center justify-between">
+             <td colspan="${indColspan}" class="p-2.5 bg-[#F8FAFC]">
+                <div class="flex items-center justify-between flex-wrap gap-2">
                    <div class="flex items-center gap-2">
-                      <span class="inline-flex items-center justify-center w-6 h-6 rounded bg-indigo-700 text-white text-xs">
+                      <span class="inline-flex items-center justify-center w-6 h-6 rounded-lg bg-[#0D9488] text-white text-xs">
                          <i class="fas fa-chart-pie"></i>
                       </span>
-                      <span class="text-xs font-black text-indigo-950">المؤشر: ${indName}</span>
-                      <span class="text-[11px] text-gray-500 font-normal">(${procNames.length} إجراء / ${totalQuestionsForInd} أسئلة)</span>
+                      <span class="text-xs font-bold text-slate-900">المؤشر: ${indName}</span>
+                      <span class="text-[11px] text-slate-500 font-normal tabular-nums">(${procNames.length} إجراء / ${totalQuestionsForInd} أسئلة)</span>
                    </div>
                    ${indActionsHtml}
                 </div>
@@ -3885,32 +4486,32 @@
              if (isAdmin) {
                 procActionsHtml = `
                    <div class="flex items-center gap-2">
-                      <button type="button" onclick="quickAddUnderProc('${indName.replace(/'/g, "\\'")}', '${procName.replace(/'/g, "\\'")}')" class="text-[11px] text-indigo-700 hover:text-indigo-900 bg-white hover:bg-indigo-100/50 border border-indigo-200 px-2 py-0.5 rounded transition" title="إضافة سؤال تابع لهذا الإجراء مباشرة">
+                      <button type="button" onclick="quickAddUnderProc('${indName.replace(/'/g, "\\'")}', '${procName.replace(/'/g, "\\'")}')" class="text-[11px] text-[#0D9488] hover:bg-[#0D9488]/10 bg-white border border-[#E2E8F0] px-2 py-0.5 rounded-lg transition" title="إضافة سؤال تابع لهذا الإجراء مباشرة">
                          <i class="fas fa-plus ml-1 text-[10px]"></i> سؤال للإجراء
                       </button>
-                      <button type="button" onclick="editProcName('${indName.replace(/'/g, "\\'")}', '${procName.replace(/'/g, "\\'")}')" class="text-[11px] text-indigo-700 hover:text-indigo-900 bg-white hover:bg-indigo-100/50 border border-indigo-200 px-2 py-0.5 rounded transition" title="تعديل اسم الإجراء لجميع الأسئلة التابعة له">
+                      <button type="button" onclick="editProcName('${indName.replace(/'/g, "\\'")}', '${procName.replace(/'/g, "\\'")}')" class="text-[11px] text-[#0284C7] hover:bg-[#0284C7]/10 bg-white border border-[#E2E8F0] px-2 py-0.5 rounded-lg transition" title="تعديل اسم الإجراء لجميع الأسئلة التابعة له">
                          <i class="fas fa-pen ml-1 text-[10px]"></i> تعديل الإجراء
                       </button>
-                      <button type="button" onclick="deleteProcedure('${indName.replace(/'/g, "\\'")}', '${procName.replace(/'/g, "\\'")}')" class="text-[11px] text-red-600 hover:text-red-800 bg-white hover:bg-red-50 border border-red-200 px-2 py-0.5 rounded transition font-bold" title="حذف هذا الإجراء وكافة أسئلته وحذفه من جميع التقارير">
+                      <button type="button" onclick="deleteProcedure('${indName.replace(/'/g, "\\'")}', '${procName.replace(/'/g, "\\'")}')" class="text-[11px] text-[#EF4444] hover:bg-[#FEE2E2] bg-white border border-red-200 px-2 py-0.5 rounded-lg transition font-bold" title="حذف هذا الإجراء وكافة أسئلته وحذفه من جميع التقارير">
                          <i class="fas fa-trash-alt ml-1 text-[10px]"></i> حذف الإجراء
                       </button>
                    </div>
                 `;
              }
 
-             // Procedure Sub-header Bar (بحيث يظهر الإجراء وأسفله الأسئلة الخاصة به في المؤشر)
+             // Procedure Sub-header Bar
              const procTr = document.createElement('tr');
-             procTr.className = 'bg-indigo-50/80 border-y border-indigo-100 font-semibold';
+             procTr.className = 'bg-[#0284C7]/5 border-y border-[#E2E8F0] font-semibold';
              procTr.innerHTML = `
-                <td class="p-2 border-l border-gray-200 text-gray-400 text-[11px] select-none">${indName}</td>
-                <td colspan="${procColspan}" class="p-2 bg-indigo-50 font-bold text-indigo-900">
-                   <div class="flex items-center justify-between">
+                <td class="p-2 border-l border-[#E2E8F0] text-slate-400 text-[11px] select-none">${indName}</td>
+                <td colspan="${procColspan}" class="p-2 font-bold text-slate-900">
+                   <div class="flex items-center justify-between flex-wrap gap-2">
                       <div class="flex items-center gap-2">
-                         <span class="inline-flex items-center px-2 py-0.5 rounded text-xs bg-indigo-600 text-white font-bold shadow-2xs">
+                         <span class="inline-flex items-center px-2 py-0.5 rounded-full text-[11px] bg-[#0284C7] text-white font-bold">
                             <i class="fas fa-stethoscope ml-1 text-[10px]"></i> الإجراء:
                          </span>
-                         <span class="text-xs font-bold text-gray-900">${procName}</span>
-                         <span class="text-[10px] text-indigo-700 font-normal bg-indigo-100/60 px-1.5 py-0.5 rounded">(${qList.length} أسئلة تابعة)</span>
+                         <span class="text-xs font-bold text-slate-900">${procName}</span>
+                         <span class="text-[10px] text-[#0284C7] font-semibold bg-[#0284C7]/10 px-2 py-0.5 rounded-full tabular-nums">(${qList.length} أسئلة تابعة)</span>
                       </div>
                       ${procActionsHtml}
                    </div>
@@ -3918,51 +4519,51 @@
              `;
              tbody.appendChild(procTr);
 
-             // 3. Questions belonging to this Procedure (أسفل الإجراء مباشرة)
+             // 3. Questions belonging to this Procedure
              qList.forEach(item => {
                 const tr = document.createElement('tr');
-                tr.className = 'border-b hover:bg-gray-50/80 transition';
+                tr.className = 'border-b border-[#E2E8F0] hover:bg-[#F8FAFC] transition';
                 
                 const catsStr = (item.cats && item.cats.length) ? item.cats.join(', ') : 'جميع الفئات';
                 const deptsStr = (item.depts && item.depts.length) ? item.depts.join(', ') : 'جميع الأقسام';
 
                 const catsCell = isAdmin
-                   ? `<button onclick="openSelectionEditor('cats', ${item.originalIndex})" class="bg-indigo-100 text-indigo-700 hover:bg-indigo-200 px-2 py-1 rounded text-xs truncate max-w-[100px] transition" title="${catsStr}">
+                   ? `<button onclick="openSelectionEditor('cats', ${item.originalIndex})" class="bg-[#0284C7]/10 text-[#0284C7] hover:bg-[#0284C7]/20 px-2.5 py-1 rounded-full text-xs truncate max-w-[110px] transition font-semibold" title="${catsStr}">
                          ${catsStr} <i class="fas fa-edit mr-1"></i>
                       </button>`
-                   : `<span class="bg-indigo-50 text-indigo-800 border border-indigo-200 px-2.5 py-1 rounded text-xs inline-block truncate max-w-[110px] select-none" title="${catsStr}">
+                   : `<span class="bg-[#0284C7]/10 text-[#0284C7] px-2.5 py-1 rounded-full text-xs inline-block truncate max-w-[110px] select-none font-semibold" title="${catsStr}">
                          ${catsStr}
                       </span>`;
 
                 const deptsCell = isAdmin
-                   ? `<button onclick="openSelectionEditor('depts', ${item.originalIndex})" class="bg-teal-100 text-teal-700 hover:bg-teal-200 px-2 py-1 rounded text-xs truncate max-w-[100px] transition" title="${deptsStr}">
+                   ? `<button onclick="openSelectionEditor('depts', ${item.originalIndex})" class="bg-[#0D9488]/10 text-[#0D9488] hover:bg-[#0D9488]/20 px-2.5 py-1 rounded-full text-xs truncate max-w-[110px] transition font-semibold" title="${deptsStr}">
                          ${deptsStr} <i class="fas fa-edit mr-1"></i>
                       </button>`
-                   : `<span class="bg-teal-50 text-teal-800 border border-teal-200 px-2.5 py-1 rounded text-xs inline-block truncate max-w-[110px] select-none" title="${deptsStr}">
+                   : `<span class="bg-[#0D9488]/10 text-[#0D9488] px-2.5 py-1 rounded-full text-xs inline-block truncate max-w-[110px] select-none font-semibold" title="${deptsStr}">
                          ${deptsStr}
                       </span>`;
 
                 const delCell = isAdmin
-                   ? `<td class="p-2.5 border text-center">
-                         <button type="button" onclick="delKpi('${item.indicator.replace(/'/g, "\\'")}', '${item.question.replace(/'/g, "\\'")}')" class="text-red-500 hover:text-red-700 p-1.5 rounded hover:bg-red-50 transition" title="إلغاء وحذف هذا السؤال من المؤشر ومن كافة النتائج المحفوظة">
+                   ? `<td class="p-2.5 border border-[#E2E8F0] text-center">
+                         <button type="button" onclick="delKpi('${item.indicator.replace(/'/g, "\\'")}', '${item.question.replace(/'/g, "\\'")}')" class="text-[#EF4444] hover:bg-[#FEE2E2] p-1.5 rounded-lg transition" title="إلغاء وحذف هذا السؤال من المؤشر ومن كافة النتائج المحفوظة">
                             <i class="fas fa-trash-alt"></i>
                          </button>
                       </td>`
                    : '';
 
                 tr.innerHTML = `
-                   <td class="p-2.5 border text-gray-400 text-[11px]">${item.indicator}</td>
-                   <td class="p-2.5 border text-indigo-900 font-semibold text-xs bg-indigo-50/30">
-                      <span class="text-xs text-indigo-800">${item.procedure}</span>
+                   <td class="p-2.5 border border-[#E2E8F0] text-slate-400 text-[11px]">${item.indicator}</td>
+                   <td class="p-2.5 border border-[#E2E8F0] text-[#0284C7] font-semibold text-xs bg-[#F8FAFC]">
+                      <span class="text-xs">${item.procedure}</span>
                    </td>
-                   <td class="p-2.5 border font-medium text-gray-800">
+                   <td class="p-2.5 border border-[#E2E8F0] font-medium text-slate-800">
                       <div class="flex items-start gap-1.5">
-                         <span class="text-indigo-500 font-bold text-xs mt-0.5">•</span>
+                         <span class="text-[#0D9488] font-bold text-xs mt-0.5">•</span>
                          <span class="text-xs leading-relaxed">${item.question}</span>
                       </div>
                    </td>
-                   <td class="p-2.5 border text-center">${catsCell}</td>
-                   <td class="p-2.5 border text-center">${deptsCell}</td>
+                   <td class="p-2.5 border border-[#E2E8F0] text-center">${catsCell}</td>
+                   <td class="p-2.5 border border-[#E2E8F0] text-center">${deptsCell}</td>
                    ${delCell}
                 `;
                 tbody.appendChild(tr);
